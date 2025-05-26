@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -7,99 +7,173 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Upload, Link, Images, Copy, Trash2, Plus, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-
-interface StoredImage {
-  id: string;
-  name: string;
-  url: string;
-  shortUrl: string;
-  uploadedAt: Date;
-}
+import { 
+  ImageData,
+  uploadImageToStorage, 
+  saveImageMetadata, 
+  getAllImages, 
+  deleteImage, 
+  getPublicUrl,
+  generateShortUrl 
+} from "@/utils/imageUtils";
 
 const Index = () => {
-  const [images, setImages] = useState<StoredImage[]>([]);
+  const [images, setImages] = useState<ImageData[]>([]);
   const [urlInput, setUrlInput] = useState("");
   const [urlsTextarea, setUrlsTextarea] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  const generateShortUrl = (id: string) => {
-    return `https://imgbank.app/${id}`;
+  // Загружаем изображения при запуске
+  useEffect(() => {
+    loadImages();
+  }, []);
+
+  const loadImages = async () => {
+    try {
+      const loadedImages = await getAllImages();
+      setImages(loadedImages);
+    } catch (error) {
+      console.error('Ошибка загрузки изображений:', error);
+      toast({
+        title: "Ошибка",
+        description: "Не удалось загрузить изображения",
+        variant: "destructive",
+      });
+    }
   };
 
-  const generateId = () => {
-    return Math.random().toString(36).substr(2, 8);
-  };
-
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files) return;
 
-    Array.from(files).forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const id = generateId();
-        const newImage: StoredImage = {
-          id,
-          name: file.name,
-          url: e.target?.result as string,
-          shortUrl: generateShortUrl(id),
-          uploadedAt: new Date(),
-        };
-        setImages(prev => [...prev, newImage]);
-      };
-      reader.readAsDataURL(file);
+    setIsLoading(true);
+    const uploadPromises = Array.from(files).map(async (file) => {
+      try {
+        // Загружаем файл в хранилище
+        const filename = await uploadImageToStorage(file);
+        
+        // Сохраняем метаданные в базу данных
+        const imageData = await saveImageMetadata(file, filename);
+        
+        return imageData;
+      } catch (error) {
+        console.error('Ошибка загрузки файла:', file.name, error);
+        toast({
+          title: "Ошибка загрузки",
+          description: `Не удалось загрузить файл ${file.name}`,
+          variant: "destructive",
+        });
+        return null;
+      }
     });
 
-    toast({
-      title: "Изображения загружены",
-      description: `Загружено ${files.length} изображений`,
-    });
+    try {
+      const results = await Promise.all(uploadPromises);
+      const successfulUploads = results.filter(result => result !== null) as ImageData[];
+      
+      if (successfulUploads.length > 0) {
+        setImages(prev => [...successfulUploads, ...prev]);
+        toast({
+          title: "Изображения загружены",
+          description: `Загружено ${successfulUploads.length} из ${files.length} изображений`,
+        });
+      }
+    } catch (error) {
+      console.error('Ошибка массовой загрузки:', error);
+    } finally {
+      setIsLoading(false);
+      // Очищаем input
+      event.target.value = '';
+    }
   };
 
-  const handleUrlAdd = () => {
+  const handleUrlAdd = async () => {
     if (!urlInput.trim()) return;
 
-    const id = generateId();
-    const newImage: StoredImage = {
-      id,
-      name: `Image ${id}`,
-      url: urlInput,
-      shortUrl: generateShortUrl(id),
-      uploadedAt: new Date(),
-    };
+    setIsLoading(true);
+    try {
+      // Проверяем, что это действительно изображение
+      const response = await fetch(urlInput, { method: 'HEAD' });
+      const contentType = response.headers.get('content-type');
+      
+      if (!contentType || !contentType.startsWith('image/')) {
+        throw new Error('URL не указывает на изображение');
+      }
 
-    setImages(prev => [...prev, newImage]);
-    setUrlInput("");
+      // Загружаем изображение
+      const imageResponse = await fetch(urlInput);
+      const blob = await imageResponse.blob();
+      
+      // Создаем файл из blob
+      const filename = urlInput.split('/').pop() || 'image';
+      const file = new File([blob], filename, { type: contentType });
 
-    toast({
-      title: "Изображение добавлено",
-      description: "Изображение по ссылке добавлено в банк",
-    });
+      // Загружаем в хранилище
+      const storedFilename = await uploadImageToStorage(file);
+      const imageData = await saveImageMetadata(file, storedFilename);
+
+      setImages(prev => [imageData, ...prev]);
+      setUrlInput("");
+
+      toast({
+        title: "Изображение добавлено",
+        description: "Изображение по ссылке добавлено в банк",
+      });
+    } catch (error) {
+      console.error('Ошибка добавления по URL:', error);
+      toast({
+        title: "Ошибка",
+        description: "Не удалось добавить изображение по ссылке",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleBulkUrls = () => {
+  const handleBulkUrls = async () => {
     const urls = urlsTextarea
       .split('\n')
       .map(url => url.trim())
       .filter(url => url && url.startsWith('http'));
 
-    urls.forEach(url => {
-      const id = generateId();
-      const newImage: StoredImage = {
-        id,
-        name: `Image ${id}`,
-        url,
-        shortUrl: generateShortUrl(id),
-        uploadedAt: new Date(),
-      };
-      setImages(prev => [...prev, newImage]);
-    });
+    if (urls.length === 0) return;
+
+    setIsLoading(true);
+    let successCount = 0;
+
+    for (const url of urls) {
+      try {
+        const response = await fetch(url, { method: 'HEAD' });
+        const contentType = response.headers.get('content-type');
+        
+        if (!contentType || !contentType.startsWith('image/')) {
+          continue;
+        }
+
+        const imageResponse = await fetch(url);
+        const blob = await imageResponse.blob();
+        
+        const filename = url.split('/').pop() || 'image';
+        const file = new File([blob], filename, { type: contentType });
+
+        const storedFilename = await uploadImageToStorage(file);
+        const imageData = await saveImageMetadata(file, storedFilename);
+
+        setImages(prev => [imageData, ...prev]);
+        successCount++;
+      } catch (error) {
+        console.error('Ошибка добавления URL:', url, error);
+      }
+    }
 
     setUrlsTextarea("");
+    setIsLoading(false);
 
     toast({
       title: "Изображения добавлены",
-      description: `Добавлено ${urls.length} изображений`,
+      description: `Добавлено ${successCount} из ${urls.length} изображений`,
     });
   };
 
@@ -111,12 +185,22 @@ const Index = () => {
     });
   };
 
-  const deleteImage = (id: string) => {
-    setImages(prev => prev.filter(img => img.id !== id));
-    toast({
-      title: "Изображение удалено",
-      description: "Изображение удалено из банка",
-    });
+  const handleDeleteImage = async (imageData: ImageData) => {
+    try {
+      await deleteImage(imageData.id, imageData.filename);
+      setImages(prev => prev.filter(img => img.id !== imageData.id));
+      toast({
+        title: "Изображение удалено",
+        description: "Изображение удалено из банка",
+      });
+    } catch (error) {
+      console.error('Ошибка удаления:', error);
+      toast({
+        title: "Ошибка",
+        description: "Не удалось удалить изображение",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -184,6 +268,7 @@ const Index = () => {
                     multiple
                     accept="image/*"
                     onChange={handleFileUpload}
+                    disabled={isLoading}
                     className="cursor-pointer border-2 border-dashed border-gray-300 hover:border-blue-400 transition-colors duration-200 bg-gray-50/50 h-12"
                   />
                   <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
@@ -219,10 +304,12 @@ const Index = () => {
                     placeholder="https://example.com/image.jpg"
                     value={urlInput}
                     onChange={(e) => setUrlInput(e.target.value)}
+                    disabled={isLoading}
                     className="flex-1 border-gray-300 focus:border-blue-500 transition-colors duration-200"
                   />
                   <Button 
                     onClick={handleUrlAdd}
+                    disabled={isLoading}
                     className="bg-gradient-to-r from-green-500 to-teal-600 hover:from-green-600 hover:to-teal-700 text-white px-6 transition-all duration-200"
                   >
                     Добавить
@@ -252,14 +339,16 @@ const Index = () => {
                 placeholder="https://example.com/image1.jpg&#10;https://example.com/image2.jpg&#10;https://example.com/image3.jpg"
                 value={urlsTextarea}
                 onChange={(e) => setUrlsTextarea(e.target.value)}
+                disabled={isLoading}
                 rows={4}
                 className="border-gray-300 focus:border-blue-500 transition-colors duration-200 bg-gray-50/50"
               />
               <Button 
                 onClick={handleBulkUrls} 
+                disabled={isLoading}
                 className="w-full bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white h-12 text-base font-medium transition-all duration-200"
               >
-                Добавить все ссылки
+                {isLoading ? "Обработка..." : "Добавить все ссылки"}
               </Button>
             </div>
           </CardContent>
@@ -288,8 +377,8 @@ const Index = () => {
                   <div key={image.id} className="group relative bg-white rounded-xl p-4 shadow-md hover:shadow-xl transition-all duration-300 border border-gray-100">
                     <div className="aspect-video mb-4 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg overflow-hidden relative">
                       <img
-                        src={image.url}
-                        alt={image.name}
+                        src={getPublicUrl(image.filename)}
+                        alt={image.original_name}
                         className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                         onError={(e) => {
                           (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjEyMCIgdmlld0JveD0iMCAwIDIwMCAxMjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMTIwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik04NS41IDQ1SDExNC41VjQ3LjVIODUuNVY0NVoiIGZpbGw9IiM5Q0EzQUYiLz4KPHA+PC9wPgo8L3N2Zz4K';
@@ -300,16 +389,16 @@ const Index = () => {
                       </div>
                     </div>
                     <div className="space-y-3">
-                      <p className="font-medium text-sm text-gray-800 truncate">{image.name}</p>
+                      <p className="font-medium text-sm text-gray-800 truncate">{image.original_name}</p>
                       <div className="flex items-center gap-2">
                         <code className="text-xs bg-gradient-to-r from-gray-100 to-gray-200 px-3 py-2 rounded-lg flex-1 truncate font-mono text-gray-700">
-                          {image.shortUrl}
+                          {generateShortUrl(image.filename)}
                         </code>
                         <div className="flex gap-1">
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => copyToClipboard(image.shortUrl)}
+                            onClick={() => copyToClipboard(generateShortUrl(image.filename))}
                             className="h-8 w-8 p-0 hover:bg-blue-50 hover:border-blue-300 transition-colors duration-200"
                           >
                             <Copy className="h-3 w-3" />
@@ -317,7 +406,7 @@ const Index = () => {
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => deleteImage(image.id)}
+                            onClick={() => handleDeleteImage(image)}
                             className="h-8 w-8 p-0 hover:bg-red-50 hover:border-red-300 hover:text-red-600 transition-colors duration-200"
                           >
                             <Trash2 className="h-3 w-3" />
@@ -326,7 +415,7 @@ const Index = () => {
                       </div>
                       <p className="text-xs text-gray-500 flex items-center gap-1">
                         <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-                        {image.uploadedAt.toLocaleString()}
+                        {new Date(image.uploaded_at).toLocaleString()}
                       </p>
                     </div>
                   </div>
@@ -352,6 +441,16 @@ const Index = () => {
           </div>
         )}
       </div>
+
+      {/* Loading Overlay */}
+      {isLoading && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 flex items-center gap-3">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+            <span>Загрузка изображений...</span>
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <footer className="mt-16 bg-white/30 backdrop-blur-sm border-t border-white/20">
