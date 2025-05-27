@@ -1,20 +1,17 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Upload, Link, Images, Copy, Trash2, Plus, Eye } from "lucide-react";
+import { Upload, Link, Images, Plus, FolderOpen } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 import { 
   ImageData,
   uploadImageToStorage, 
   saveImageMetadata, 
-  getAllImages, 
-  deleteImage, 
-  getPublicUrl,
-  generateShortUrl 
+  getAllImages
 } from "@/utils/imageUtils";
 
 const Index = () => {
@@ -22,6 +19,7 @@ const Index = () => {
   const [urlsTextarea, setUrlsTextarea] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   // Загружаем изображения при запуске
   useEffect(() => {
@@ -190,6 +188,19 @@ const Index = () => {
                 для работы с визуальным контентом вашей компании
               </p>
             </div>
+            
+            {/* Navigation Buttons */}
+            <div className="mt-12 flex flex-wrap justify-center gap-6">
+              <Button 
+                onClick={() => navigate('/library')}
+                className="bg-blue-600 hover:bg-blue-700 text-white h-14 px-8 text-base font-medium transition-all duration-300 shadow-lg hover:shadow-xl border-0"
+              >
+                <FolderOpen className="h-5 w-5 mr-3" />
+                Открыть библиотеку
+              </Button>
+            </div>
+
+            {/* Status indicators */}
             <div className="mt-12 flex flex-wrap justify-center gap-8 text-sm text-slate-300">
               <div className="flex items-center gap-3 px-4 py-2 backdrop-blur-md bg-white/5 border border-white/10 rounded-xl">
                 <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
@@ -238,7 +249,7 @@ const Index = () => {
                     accept="image/*"
                     onChange={handleFileUpload}
                     disabled={isLoading}
-                    className="cursor-pointer border-2 border-dashed border-white/20 hover:border-white/40 transition-colors duration-300 bg-white/5 backdrop-blur-md h-16 text-white file:text-white file:bg-gradient-to-r file:from-blue-500 file:to-purple-500 file:border-0 file:rounded-lg file:px-4 file:py-2 file:mr-4"
+                    className="cursor-pointer border-2 border-dashed border-white/20 hover:border-white/40 transition-colors duration-300 bg-white/5 backdrop-blur-md h-16 text-white file:text-white file:bg-blue-600 file:hover:bg-blue-700 file:border-0 file:rounded-lg file:px-4 file:py-2 file:mr-4"
                   />
                   <div className="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none">
                     <Plus className="h-6 w-6 text-slate-400 group-hover:text-white transition-colors duration-300" />
@@ -275,7 +286,7 @@ const Index = () => {
                 <Button 
                   onClick={handleBulkUrls} 
                   disabled={isLoading}
-                  className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white h-14 text-base font-medium transition-all duration-300 shadow-lg hover:shadow-xl border-0"
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white h-14 text-base font-medium transition-all duration-300 shadow-lg hover:shadow-xl border-0"
                 >
                   {isLoading ? (
                     <div className="flex items-center gap-3">
@@ -291,7 +302,7 @@ const Index = () => {
           </Card>
         </div>
 
-        {/* Images Gallery */}
+        {/* Quick Stats */}
         {images.length > 0 && (
           <Card className="backdrop-blur-md bg-white/5 border border-white/10 shadow-2xl mb-12">
             <CardHeader>
@@ -300,64 +311,24 @@ const Index = () => {
                   <Images className="h-6 w-6 text-white" />
                   <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 rounded-2xl blur-lg"></div>
                 </div>
-                Библиотека изображений
-                <div className="ml-auto px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-xl text-sm font-medium shadow-lg">
+                Статистика библиотеки
+                <div className="ml-auto px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-medium shadow-lg">
                   {images.length} файлов
                 </div>
               </CardTitle>
-              <CardDescription className="text-slate-300 text-base">
-                Управляйте вашими изображениями и получайте короткие ссылки
-              </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {images.map((image) => (
-                  <div key={image.id} className="group relative backdrop-blur-md bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all duration-300 shadow-lg hover:shadow-2xl">
-                    <div className="aspect-video mb-4 bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl overflow-hidden relative border border-white/10">
-                      <img
-                        src={getPublicUrl(image.filename)}
-                        alt={image.original_name}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjEyMCIgdmlld0JveD0iMCAwIDIwMCAxMjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMTIwIiBmaWxsPSIjMzMzIi8+CjxwYXRoIGQ9Ik04NS41IDQ1SDExNC41VjQ3LjVIODUuNVY0NVoiIGZpbGw9IiM2NjYiLz4KPHA+PC9wPgo8L3N2Zz4K';
-                        }}
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                        <Eye className="h-8 w-8 text-white" />
-                      </div>
-                    </div>
-                    <div className="space-y-4">
-                      <p className="font-medium text-sm text-white truncate">{image.original_name}</p>
-                      <div className="flex items-center gap-2">
-                        <code className="text-xs bg-slate-800/50 backdrop-blur-md border border-white/10 px-3 py-2 rounded-lg flex-1 truncate font-mono text-slate-300">
-                          {generateShortUrl(image.filename)}
-                        </code>
-                        <div className="flex gap-1">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => copyToClipboard(generateShortUrl(image.filename))}
-                            className="h-9 w-9 p-0 backdrop-blur-md bg-white/5 border-white/20 hover:bg-white/10 hover:border-white/30 text-white transition-all duration-300"
-                          >
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleDeleteImage(image)}
-                            className="h-9 w-9 p-0 backdrop-blur-md bg-red-500/10 border-red-500/20 hover:bg-red-500/20 hover:border-red-500/30 text-red-400 hover:text-red-300 transition-all duration-300"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                      <p className="text-xs text-slate-400 flex items-center gap-2">
-                        <div className="w-1 h-1 bg-slate-500 rounded-full"></div>
-                        {new Date(image.uploaded_at).toLocaleString('ru-RU')}
-                      </p>
-                    </div>
-                  </div>
-                ))}
+              <div className="text-center py-8">
+                <p className="text-slate-300 text-lg mb-6">
+                  В вашей библиотеке {images.length} изображений
+                </p>
+                <Button 
+                  onClick={() => navigate('/library')}
+                  className="bg-blue-600 hover:bg-blue-700 text-white h-12 px-6 text-base font-medium transition-all duration-300 shadow-lg hover:shadow-xl border-0"
+                >
+                  <FolderOpen className="h-5 w-5 mr-2" />
+                  Перейти в библиотеку
+                </Button>
               </div>
             </CardContent>
           </Card>
