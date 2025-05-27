@@ -34,6 +34,8 @@ Deno.serve(async (req) => {
     const url = new URL(req.url)
     const filename = url.pathname.split('/').pop()
 
+    console.log('Requested filename:', filename)
+
     if (!filename) {
       return new Response('Filename not provided', { 
         status: 400,
@@ -53,7 +55,17 @@ Deno.serve(async (req) => {
       .eq('filename', filename)
       .maybeSingle()
 
-    if (error || !image) {
+    console.log('Database query result:', { image, error })
+
+    if (error) {
+      console.error('Database error:', error)
+      return new Response('Database error', { 
+        status: 500,
+        headers: corsHeaders
+      })
+    }
+
+    if (!image) {
       return new Response('Image not found', { 
         status: 404,
         headers: corsHeaders
@@ -65,6 +77,8 @@ Deno.serve(async (req) => {
       .from('images')
       .getPublicUrl(image.filename)
 
+    console.log('Storage URL data:', urlData)
+
     if (!urlData.publicUrl) {
       return new Response('Failed to get image URL', { 
         status: 500,
@@ -72,8 +86,26 @@ Deno.serve(async (req) => {
       })
     }
 
-    // Перенаправляем на изображение
-    return Response.redirect(urlData.publicUrl, 302)
+    // Возвращаем прямую ссылку на изображение с правильными заголовками
+    const imageResponse = await fetch(urlData.publicUrl)
+    
+    if (!imageResponse.ok) {
+      return new Response('Image not accessible', { 
+        status: 404,
+        headers: corsHeaders
+      })
+    }
+
+    const imageData = await imageResponse.arrayBuffer()
+    
+    return new Response(imageData, {
+      headers: {
+        ...corsHeaders,
+        'Content-Type': image.mime_type || 'image/jpeg',
+        'Cache-Control': 'public, max-age=31536000', // Кэшируем на год
+        'Content-Length': imageData.byteLength.toString()
+      }
+    })
 
   } catch (error) {
     console.error('Error:', error)

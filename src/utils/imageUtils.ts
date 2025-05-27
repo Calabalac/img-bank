@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 export interface ImageData {
@@ -13,7 +12,8 @@ export interface ImageData {
 }
 
 export const generateShortUrl = (filename: string) => {
-  return `https://img-bank.lovable.app/${filename}`;
+  // Используем правильный URL для Edge Function
+  return `https://jafuyqfmcpilcvzzmmwq.supabase.co/functions/v1/image-redirect/${filename}`;
 };
 
 export const generateUniqueFilename = (originalName: string) => {
