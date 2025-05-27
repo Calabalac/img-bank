@@ -19,7 +19,6 @@ import {
 
 const Index = () => {
   const [images, setImages] = useState<ImageData[]>([]);
-  const [urlInput, setUrlInput] = useState("");
   const [urlsTextarea, setUrlsTextarea] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -85,50 +84,6 @@ const Index = () => {
       setIsLoading(false);
       // Очищаем input
       event.target.value = '';
-    }
-  };
-
-  const handleUrlAdd = async () => {
-    if (!urlInput.trim()) return;
-
-    setIsLoading(true);
-    try {
-      // Проверяем, что это действительно изображение
-      const response = await fetch(urlInput, { method: 'HEAD' });
-      const contentType = response.headers.get('content-type');
-      
-      if (!contentType || !contentType.startsWith('image/')) {
-        throw new Error('URL не указывает на изображение');
-      }
-
-      // Загружаем изображение
-      const imageResponse = await fetch(urlInput);
-      const blob = await imageResponse.blob();
-      
-      // Создаем файл из blob
-      const filename = urlInput.split('/').pop() || 'image';
-      const file = new File([blob], filename, { type: contentType });
-
-      // Загружаем в хранилище
-      const storedFilename = await uploadImageToStorage(file);
-      const imageData = await saveImageMetadata(file, storedFilename);
-
-      setImages(prev => [imageData, ...prev]);
-      setUrlInput("");
-
-      toast({
-        title: "Изображение добавлено",
-        description: "Изображение по ссылке добавлено в банк",
-      });
-    } catch (error) {
-      console.error('Ошибка добавления по URL:', error);
-      toast({
-        title: "Ошибка",
-        description: "Не удалось добавить изображение по ссылке",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -204,64 +159,78 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 relative overflow-hidden">
+      {/* Animated background elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute w-96 h-96 rounded-full bg-gradient-to-r from-blue-500/10 to-purple-500/10 -top-48 -left-48 animate-pulse"></div>
+        <div className="absolute w-80 h-80 rounded-full bg-gradient-to-r from-purple-500/10 to-pink-500/10 top-1/2 -right-40 animate-pulse delay-1000"></div>
+        <div className="absolute w-64 h-64 rounded-full bg-gradient-to-r from-cyan-500/10 to-blue-500/10 bottom-0 left-1/3 animate-pulse delay-500"></div>
+      </div>
+
       {/* Hero Header */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 text-white">
-        <div className="absolute inset-0 bg-black/10"></div>
-        <div className="relative max-w-6xl mx-auto px-6 py-16">
+      <div className="relative">
+        <div className="absolute inset-0 bg-gradient-to-r from-slate-900/90 via-slate-800/90 to-slate-900/90 backdrop-blur-xl"></div>
+        <div className="relative max-w-7xl mx-auto px-6 py-20">
           <div className="text-center">
-            <div className="flex items-center justify-center mb-6">
-              <div className="p-4 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20">
-                <Images className="h-12 w-12" />
+            <div className="flex items-center justify-center mb-8">
+              <div className="relative p-6 backdrop-blur-md bg-white/5 border border-white/10 rounded-3xl shadow-2xl">
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-3xl blur-xl"></div>
+                <Images className="h-16 w-16 text-white relative z-10" />
               </div>
             </div>
-            <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent">
-              Img Bank
+            <h1 className="text-7xl font-bold mb-6 bg-gradient-to-r from-white via-blue-100 to-purple-100 bg-clip-text text-transparent">
+              ImageBank
             </h1>
-            <p className="text-xl text-blue-100 max-w-2xl mx-auto leading-relaxed">
-              Современный сервис для хранения изображений с короткими ссылками. 
-              Загружайте, организуйте и делитесь своими изображениями легко и быстро.
-            </p>
-            <div className="mt-8 flex flex-wrap justify-center gap-4 text-sm text-blue-100">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                Быстрая загрузка
+            <div className="max-w-3xl mx-auto space-y-4">
+              <p className="text-2xl text-slate-300 font-light leading-relaxed">
+                Корпоративное решение для управления изображениями
+              </p>
+              <p className="text-lg text-slate-400 leading-relaxed">
+                Безопасное хранение, мгновенная доставка и профессиональные инструменты 
+                для работы с визуальным контентом вашей компании
+              </p>
+            </div>
+            <div className="mt-12 flex flex-wrap justify-center gap-8 text-sm text-slate-300">
+              <div className="flex items-center gap-3 px-4 py-2 backdrop-blur-md bg-white/5 border border-white/10 rounded-xl">
+                <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+                <span>Enterprise Security</span>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                Короткие ссылки
+              <div className="flex items-center gap-3 px-4 py-2 backdrop-blur-md bg-white/5 border border-white/10 rounded-xl">
+                <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+                <span>Global CDN</span>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                Массовая обработка
+              <div className="flex items-center gap-3 px-4 py-2 backdrop-blur-md bg-white/5 border border-white/10 rounded-xl">
+                <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
+                <span>API Integration</span>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-6 -mt-8 relative z-10">
+      <div className="max-w-7xl mx-auto px-6 -mt-8 relative z-10">
         {/* Upload Cards */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
           {/* Upload Files */}
-          <Card className="group hover:shadow-xl transition-all duration-300 border-0 shadow-lg bg-white/80 backdrop-blur-sm">
-            <CardHeader className="pb-4">
-              <CardTitle className="flex items-center gap-3 text-gray-800">
-                <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg text-white">
-                  <Upload className="h-5 w-5" />
+          <Card className="group backdrop-blur-md bg-white/5 border border-white/10 shadow-2xl hover:bg-white/10 transition-all duration-500">
+            <CardHeader className="pb-6">
+              <CardTitle className="flex items-center gap-4 text-white text-xl">
+                <div className="relative p-3 backdrop-blur-md bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-white/20 rounded-2xl">
+                  <Upload className="h-6 w-6 text-white" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-2xl blur-lg"></div>
                 </div>
-                Загрузить файлы
+                Загрузка файлов
               </CardTitle>
-              <CardDescription className="text-gray-600">
-                Выберите изображения с вашего устройства
+              <CardDescription className="text-slate-300 text-base">
+                Загрузите изображения с локального устройства
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <Label htmlFor="file-upload" className="text-sm font-medium text-gray-700">
-                  Выберите изображения
+              <div className="space-y-6">
+                <Label htmlFor="file-upload" className="text-sm font-medium text-slate-200">
+                  Выберите файлы
                 </Label>
-                <div className="relative">
+                <div className="relative group">
                   <Input
                     id="file-upload"
                     type="file"
@@ -269,129 +238,98 @@ const Index = () => {
                     accept="image/*"
                     onChange={handleFileUpload}
                     disabled={isLoading}
-                    className="cursor-pointer border-2 border-dashed border-gray-300 hover:border-blue-400 transition-colors duration-200 bg-gray-50/50 h-12"
+                    className="cursor-pointer border-2 border-dashed border-white/20 hover:border-white/40 transition-colors duration-300 bg-white/5 backdrop-blur-md h-16 text-white file:text-white file:bg-gradient-to-r file:from-blue-500 file:to-purple-500 file:border-0 file:rounded-lg file:px-4 file:py-2 file:mr-4"
                   />
-                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                    <Plus className="h-5 w-5 text-gray-400" />
+                  <div className="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                    <Plus className="h-6 w-6 text-slate-400 group-hover:text-white transition-colors duration-300" />
                   </div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Add by URL */}
-          <Card className="group hover:shadow-xl transition-all duration-300 border-0 shadow-lg bg-white/80 backdrop-blur-sm">
-            <CardHeader className="pb-4">
-              <CardTitle className="flex items-center gap-3 text-gray-800">
-                <div className="p-2 bg-gradient-to-r from-green-500 to-teal-600 rounded-lg text-white">
-                  <Link className="h-5 w-5" />
+          {/* Bulk URLs */}
+          <Card className="backdrop-blur-md bg-white/5 border border-white/10 shadow-2xl hover:bg-white/10 transition-all duration-500">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-4 text-white text-xl">
+                <div className="relative p-3 backdrop-blur-md bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-white/20 rounded-2xl">
+                  <Link className="h-6 w-6 text-white" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 rounded-2xl blur-lg"></div>
                 </div>
-                Добавить по ссылке
+                Массовое добавление
               </CardTitle>
-              <CardDescription className="text-gray-600">
-                Вставьте ссылку на изображение
+              <CardDescription className="text-slate-300 text-base">
+                Добавьте изображения по ссылкам
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <Label htmlFor="url-input" className="text-sm font-medium text-gray-700">
-                  URL изображения
-                </Label>
-                <div className="flex gap-3">
-                  <Input
-                    id="url-input"
-                    type="url"
-                    placeholder="https://example.com/image.jpg"
-                    value={urlInput}
-                    onChange={(e) => setUrlInput(e.target.value)}
-                    disabled={isLoading}
-                    className="flex-1 border-gray-300 focus:border-blue-500 transition-colors duration-200"
-                  />
-                  <Button 
-                    onClick={handleUrlAdd}
-                    disabled={isLoading}
-                    className="bg-gradient-to-r from-green-500 to-teal-600 hover:from-green-600 hover:to-teal-700 text-white px-6 transition-all duration-200"
-                  >
-                    Добавить
-                  </Button>
-                </div>
+              <div className="space-y-6">
+                <Textarea
+                  placeholder="https://example.com/image1.jpg&#10;https://example.com/image2.jpg&#10;https://example.com/image3.jpg"
+                  value={urlsTextarea}
+                  onChange={(e) => setUrlsTextarea(e.target.value)}
+                  disabled={isLoading}
+                  rows={5}
+                  className="border border-white/20 bg-white/5 backdrop-blur-md text-white placeholder:text-slate-400 focus:border-white/40 transition-colors duration-300 resize-none"
+                />
+                <Button 
+                  onClick={handleBulkUrls} 
+                  disabled={isLoading}
+                  className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white h-14 text-base font-medium transition-all duration-300 shadow-lg hover:shadow-xl border-0"
+                >
+                  {isLoading ? (
+                    <div className="flex items-center gap-3">
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                      Обработка...
+                    </div>
+                  ) : (
+                    "Добавить изображения"
+                  )}
+                </Button>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Bulk URLs */}
-        <Card className="mb-8 border-0 shadow-lg bg-white/80 backdrop-blur-sm hover:shadow-xl transition-all duration-300">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-3 text-gray-800">
-              <div className="p-2 bg-gradient-to-r from-orange-500 to-red-600 rounded-lg text-white">
-                <Plus className="h-5 w-5" />
-              </div>
-              Массовое добавление ссылок
-            </CardTitle>
-            <CardDescription className="text-gray-600">
-              Вставьте несколько ссылок, каждая с новой строки
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <Textarea
-                placeholder="https://example.com/image1.jpg&#10;https://example.com/image2.jpg&#10;https://example.com/image3.jpg"
-                value={urlsTextarea}
-                onChange={(e) => setUrlsTextarea(e.target.value)}
-                disabled={isLoading}
-                rows={4}
-                className="border-gray-300 focus:border-blue-500 transition-colors duration-200 bg-gray-50/50"
-              />
-              <Button 
-                onClick={handleBulkUrls} 
-                disabled={isLoading}
-                className="w-full bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white h-12 text-base font-medium transition-all duration-200"
-              >
-                {isLoading ? "Обработка..." : "Добавить все ссылки"}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Images Gallery */}
         {images.length > 0 && (
-          <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
+          <Card className="backdrop-blur-md bg-white/5 border border-white/10 shadow-2xl mb-12">
             <CardHeader>
-              <CardTitle className="flex items-center gap-3 text-gray-800">
-                <div className="p-2 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg text-white">
-                  <Images className="h-5 w-5" />
+              <CardTitle className="flex items-center gap-4 text-white text-2xl">
+                <div className="relative p-3 backdrop-blur-md bg-gradient-to-r from-indigo-500/20 to-purple-500/20 border border-white/20 rounded-2xl">
+                  <Images className="h-6 w-6 text-white" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 rounded-2xl blur-lg"></div>
                 </div>
-                Банк изображений
-                <div className="ml-auto px-3 py-1 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-full text-sm font-medium">
-                  {images.length}
+                Библиотека изображений
+                <div className="ml-auto px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-xl text-sm font-medium shadow-lg">
+                  {images.length} файлов
                 </div>
               </CardTitle>
-              <CardDescription className="text-gray-600">
-                Ваши загруженные изображения с короткими ссылками
+              <CardDescription className="text-slate-300 text-base">
+                Управляйте вашими изображениями и получайте короткие ссылки
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {images.map((image) => (
-                  <div key={image.id} className="group relative bg-white rounded-xl p-4 shadow-md hover:shadow-xl transition-all duration-300 border border-gray-100">
-                    <div className="aspect-video mb-4 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg overflow-hidden relative">
+                  <div key={image.id} className="group relative backdrop-blur-md bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all duration-300 shadow-lg hover:shadow-2xl">
+                    <div className="aspect-video mb-4 bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl overflow-hidden relative border border-white/10">
                       <img
                         src={getPublicUrl(image.filename)}
                         alt={image.original_name}
-                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                         onError={(e) => {
-                          (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjEyMCIgdmlld0JveD0iMCAwIDIwMCAxMjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMTIwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik04NS41IDQ1SDExNC41VjQ3LjVIODUuNVY0NVoiIGZpbGw9IiM5Q0EzQUYiLz4KPHA+PC9wPgo8L3N2Zz4K';
+                          (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjEyMCIgdmlld0JveD0iMCAwIDIwMCAxMjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMTIwIiBmaWxsPSIjMzMzIi8+CjxwYXRoIGQ9Ik04NS41IDQ1SDExNC41VjQ3LjVIODUuNVY0NVoiIGZpbGw9IiM2NjYiLz4KPHA+PC9wPgo8L3N2Zz4K';
                         }}
                       />
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300 flex items-center justify-center">
-                        <Eye className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                        <Eye className="h-8 w-8 text-white" />
                       </div>
                     </div>
-                    <div className="space-y-3">
-                      <p className="font-medium text-sm text-gray-800 truncate">{image.original_name}</p>
+                    <div className="space-y-4">
+                      <p className="font-medium text-sm text-white truncate">{image.original_name}</p>
                       <div className="flex items-center gap-2">
-                        <code className="text-xs bg-gradient-to-r from-gray-100 to-gray-200 px-3 py-2 rounded-lg flex-1 truncate font-mono text-gray-700">
+                        <code className="text-xs bg-slate-800/50 backdrop-blur-md border border-white/10 px-3 py-2 rounded-lg flex-1 truncate font-mono text-slate-300">
                           {generateShortUrl(image.filename)}
                         </code>
                         <div className="flex gap-1">
@@ -399,23 +337,23 @@ const Index = () => {
                             size="sm"
                             variant="outline"
                             onClick={() => copyToClipboard(generateShortUrl(image.filename))}
-                            className="h-8 w-8 p-0 hover:bg-blue-50 hover:border-blue-300 transition-colors duration-200"
+                            className="h-9 w-9 p-0 backdrop-blur-md bg-white/5 border-white/20 hover:bg-white/10 hover:border-white/30 text-white transition-all duration-300"
                           >
-                            <Copy className="h-3 w-3" />
+                            <Copy className="h-4 w-4" />
                           </Button>
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() => handleDeleteImage(image)}
-                            className="h-8 w-8 p-0 hover:bg-red-50 hover:border-red-300 hover:text-red-600 transition-colors duration-200"
+                            className="h-9 w-9 p-0 backdrop-blur-md bg-red-500/10 border-red-500/20 hover:bg-red-500/20 hover:border-red-500/30 text-red-400 hover:text-red-300 transition-all duration-300"
                           >
-                            <Trash2 className="h-3 w-3" />
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </div>
-                      <p className="text-xs text-gray-500 flex items-center gap-1">
-                        <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-                        {new Date(image.uploaded_at).toLocaleString()}
+                      <p className="text-xs text-slate-400 flex items-center gap-2">
+                        <div className="w-1 h-1 bg-slate-500 rounded-full"></div>
+                        {new Date(image.uploaded_at).toLocaleString('ru-RU')}
                       </p>
                     </div>
                   </div>
@@ -426,16 +364,17 @@ const Index = () => {
         )}
 
         {images.length === 0 && (
-          <div className="text-center py-16 bg-white/50 backdrop-blur-sm rounded-2xl border border-white/20">
+          <div className="text-center py-20 backdrop-blur-md bg-white/5 border border-white/10 rounded-3xl mb-12">
             <div className="max-w-md mx-auto">
-              <div className="p-6 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full w-24 h-24 mx-auto mb-6 flex items-center justify-center">
-                <Images className="h-12 w-12 text-gray-500" />
+              <div className="relative p-8 backdrop-blur-md bg-white/5 border border-white/10 rounded-full w-32 h-32 mx-auto mb-8 flex items-center justify-center">
+                <Images className="h-16 w-16 text-slate-400" />
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-full blur-xl"></div>
               </div>
-              <h3 className="text-xl font-semibold text-gray-800 mb-3">
-                Пока что банк пустой
+              <h3 className="text-2xl font-semibold text-white mb-4">
+                Библиотека пуста
               </h3>
-              <p className="text-gray-600 leading-relaxed">
-                Загрузите изображения или добавьте ссылки, чтобы начать создавать свою коллекцию
+              <p className="text-slate-300 text-lg leading-relaxed">
+                Загрузите первые изображения, чтобы начать работу с корпоративной библиотекой
               </p>
             </div>
           </div>
@@ -444,19 +383,25 @@ const Index = () => {
 
       {/* Loading Overlay */}
       {isLoading && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 flex items-center gap-3">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-            <span>Загрузка изображений...</span>
+        <div className="fixed inset-0 backdrop-blur-md bg-black/50 flex items-center justify-center z-50">
+          <div className="backdrop-blur-md bg-white/10 border border-white/20 rounded-2xl p-8 flex items-center gap-4 shadow-2xl">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+            <span className="text-white text-lg">Обработка изображений...</span>
           </div>
         </div>
       )}
 
       {/* Footer */}
-      <footer className="mt-16 bg-white/30 backdrop-blur-sm border-t border-white/20">
-        <div className="max-w-6xl mx-auto px-6 py-8">
-          <div className="text-center text-gray-600">
-            <p className="text-sm">© 2024 Img Bank. Создано для удобного хранения и обмена изображениями.</p>
+      <footer className="mt-20 backdrop-blur-md bg-white/5 border-t border-white/10">
+        <div className="max-w-7xl mx-auto px-6 py-12">
+          <div className="text-center">
+            <div className="flex items-center justify-center gap-3 mb-4">
+              <Images className="h-6 w-6 text-slate-400" />
+              <span className="text-slate-300 font-semibold">ImageBank Enterprise</span>
+            </div>
+            <p className="text-sm text-slate-400">
+              Профессиональное решение для управления корпоративными изображениями
+            </p>
           </div>
         </div>
       </footer>
