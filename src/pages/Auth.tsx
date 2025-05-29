@@ -16,7 +16,8 @@ const Auth = () => {
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const { signIn, signUp } = useAuth();
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const { signIn, signUp, resetPassword } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -60,6 +61,79 @@ const Auth = () => {
       setLoading(false);
     }
   };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) {
+      toast({
+        title: "Введите email",
+        description: "Пожалуйста, введите ваш email адрес",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await resetPassword(email);
+      toast({
+        title: "Письмо отправлено!",
+        description: "Проверьте email для восстановления пароля",
+      });
+      setShowForgotPassword(false);
+    } catch (error: any) {
+      toast({
+        title: "Ошибка",
+        description: error.message || "Не удалось отправить письмо",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (showForgotPassword) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-6">
+        <Card className="w-full max-w-md backdrop-blur-md bg-white/5 border border-white/10">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl text-white">Восстановление пароля</CardTitle>
+            <p className="text-slate-300">Введите ваш email для получения инструкций</p>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleForgotPassword} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="reset-email" className="text-white">Email</Label>
+                <Input
+                  id="reset-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="bg-white/5 border-white/20 text-white"
+                  required
+                />
+              </div>
+              <Button 
+                type="submit" 
+                className="w-full bg-blue-600 hover:bg-blue-700" 
+                disabled={loading}
+              >
+                {loading ? "Отправляем..." : "Отправить инструкции"}
+              </Button>
+              <Button 
+                type="button" 
+                variant="ghost"
+                className="w-full text-white hover:bg-white/10" 
+                onClick={() => setShowForgotPassword(false)}
+              >
+                Назад к входу
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-6">
@@ -124,6 +198,14 @@ const Auth = () => {
                   disabled={loading}
                 >
                   {loading ? "Входим..." : "Войти"}
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="ghost"
+                  className="w-full text-white/70 hover:text-white hover:bg-white/10" 
+                  onClick={() => setShowForgotPassword(true)}
+                >
+                  Забыли пароль?
                 </Button>
               </form>
             </TabsContent>
