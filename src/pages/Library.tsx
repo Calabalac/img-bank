@@ -1,21 +1,11 @@
 
 import { useState, useEffect, useMemo } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Checkbox } from "@/components/ui/checkbox";
-import { 
-  ArrowLeft, Search, Grid3X3, List, Table, Copy, Trash2, Eye,
-  Filter, FolderPlus, Folder, MoreVertical, Download
-} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { 
   ImageData,
   getAllImages, 
   deleteImage, 
-  getPublicUrl,
   generateShortUrl 
 } from "@/utils/imageUtils";
 import { LibraryHeader } from "@/components/library/LibraryHeader";
@@ -24,17 +14,13 @@ import { GalleryView } from "@/components/library/GalleryView";
 import { ListView } from "@/components/library/ListView";
 import { TableView } from "@/components/library/TableView";
 import { FolderManager } from "@/components/library/FolderManager";
+import { DragDropProvider } from "@/components/library/DragDropProvider";
+import { useAuth } from "@/hooks/useAuth";
+import { getFolderImages } from "@/utils/folderUtils";
 
 export type SortField = 'original_name' | 'uploaded_at' | 'file_size' | 'mime_type';
 export type SortDirection = 'asc' | 'desc';
 export type ViewMode = 'gallery' | 'list' | 'table';
-
-export interface Folder {
-  id: string;
-  name: string;
-  imageIds: string[];
-  color: string;
-}
 
 const Library = () => {
   const [images, setImages] = useState<ImageData[]>([]);
@@ -45,19 +31,23 @@ const Library = () => {
   const [gridColumns, setGridColumns] = useState(4);
   const [sortField, setSortField] = useState<SortField>('uploaded_at');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
-  const [folders, setFolders] = useState<Folder[]>([]);
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [foldersRefresh, setFoldersRefresh] = useState(0);
   
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
 
   useEffect(() => {
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
     loadImages();
-  }, []);
+  }, [user, navigate]);
 
   useEffect(() => {
-    // Обработка Ctrl+A для выделения всех изображений
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.key === 'a') {
         e.preventDefault();
@@ -91,15 +81,17 @@ const Library = () => {
     }
   };
 
-  // Фильтрация и сортировка изображений
-  const sortedAndFilteredImages = useMemo(() => {
+  const sortedAndFilteredImages = useMemo(async () => {
     let result = [...images];
 
     // Фильтрация по папке
     if (selectedFolder) {
-      const folder = folders.find(f => f.id === selectedFolder);
-      if (folder) {
-        result = result.filter(img => folder.imageIds.includes(img.id));
+      try {
+        const folderImageIds = await getFolderImages(selectedFolder);
+        result = result.filter(img => folderImageIds.includes(img.id));
+      } catch (error) {
+        console.error('Ошибка загрузки изображений папки:', error);
+        result = [];
       }
     }
 
@@ -134,10 +126,14 @@ const Library = () => {
     });
 
     return result;
-  }, [images, searchQuery, sortField, sortDirection, selectedFolder, folders]);
+  }, [images, searchQuery, sortField, sortDirection, selectedFolder]);
 
   useEffect(() => {
-    setFilteredImages(sortedAndFilteredImages);
+    if (sortedAndFilteredImages instanceof Promise) {
+      sortedAndFilteredImages.then(setFilteredImages);
+    } else {
+      setFilteredImages(sortedAndFilteredImages);
+    }
   }, [sortedAndFilteredImages]);
 
   const handleImageSelect = (imageId: string, selected: boolean) => {
@@ -168,12 +164,6 @@ const Library = () => {
         return newSelected;
       });
       
-      // Удаляем из всех папок
-      setFolders(prev => prev.map(folder => ({
-        ...folder,
-        imageIds: folder.imageIds.filter(id => id !== imageData.id)
-      })));
-
       toast({
         title: "Изображение удалено",
         description: "Изображение удалено из библиотеки",
@@ -199,10 +189,6 @@ const Library = () => {
       }
 
       setImages(prev => prev.filter(img => !selectedImages.has(img.id)));
-      setFolders(prev => prev.map(folder => ({
-        ...folder,
-        imageIds: folder.imageIds.filter(id => !selectedImages.has(id))
-      })));
       
       toast({
         title: "Изображения удалены",
@@ -220,97 +206,107 @@ const Library = () => {
     }
   };
 
+  const handleFoldersChange = () => {
+    setFoldersRefresh(prev => prev + 1);
+    loadImages(); // Перезагружаем изображения при изменении папок
+  };
+
+  if (!user) {
+    return null; // Компонент перенаправит на авторизацию
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      <LibraryHeader 
-        onBack={() => navigate('/')}
-        selectedCount={selectedImages.size}
-        totalCount={filteredImages.length}
-        onDeleteSelected={handleDeleteSelected}
-      />
+    <DragDropProvider>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+        <LibraryHeader 
+          onBack={() => navigate('/')}
+          selectedCount={selectedImages.size}
+          totalCount={filteredImages.length}
+          onDeleteSelected={handleDeleteSelected}
+        />
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Sidebar */}
-          <div className="lg:col-span-1">
-            <FolderManager
-              folders={folders}
-              setFolders={setFolders}
-              selectedFolder={selectedFolder}
-              setSelectedFolder={setSelectedFolder}
-              selectedImages={selectedImages}
-              images={images}
-            />
-          </div>
+        <div className="max-w-7xl mx-auto px-6 py-8">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            {/* Sidebar */}
+            <div className="lg:col-span-1">
+              <FolderManager
+                selectedFolder={selectedFolder}
+                setSelectedFolder={setSelectedFolder}
+                selectedImages={selectedImages}
+                images={images}
+                onFoldersChange={handleFoldersChange}
+              />
+            </div>
 
-          {/* Main Content */}
-          <div className="lg:col-span-3">
-            <LibraryFilters
-              searchQuery={searchQuery}
-              setSearchQuery={setSearchQuery}
-              viewMode={viewMode}
-              setViewMode={setViewMode}
-              gridColumns={gridColumns}
-              setGridColumns={setGridColumns}
-              sortField={sortField}
-              setSortField={setSortField}
-              sortDirection={sortDirection}
-              setSortDirection={setSortDirection}
-            />
+            {/* Main Content */}
+            <div className="lg:col-span-3">
+              <LibraryFilters
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+                viewMode={viewMode}
+                setViewMode={setViewMode}
+                gridColumns={gridColumns}
+                setGridColumns={setGridColumns}
+                sortField={sortField}
+                setSortField={setSortField}
+                sortDirection={sortDirection}
+                setSortDirection={setSortDirection}
+              />
 
-            {isLoading ? (
-              <div className="flex items-center justify-center py-20">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-                <span className="text-white text-lg ml-4">Загрузка изображений...</span>
-              </div>
-            ) : (
-              <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as ViewMode)}>
-                <TabsContent value="gallery">
-                  <GalleryView
-                    images={filteredImages}
-                    selectedImages={selectedImages}
-                    onImageSelect={handleImageSelect}
-                    gridColumns={gridColumns}
-                    onCopyUrl={(url) => copyToClipboard(url)}
-                    onDeleteImage={handleDeleteImage}
-                  />
-                </TabsContent>
-                
-                <TabsContent value="list">
-                  <ListView
-                    images={filteredImages}
-                    selectedImages={selectedImages}
-                    onImageSelect={handleImageSelect}
-                    onCopyUrl={(url) => copyToClipboard(url)}
-                    onDeleteImage={handleDeleteImage}
-                  />
-                </TabsContent>
-                
-                <TabsContent value="table">
-                  <TableView
-                    images={filteredImages}
-                    selectedImages={selectedImages}
-                    onImageSelect={handleImageSelect}
-                    onCopyUrl={(url) => copyToClipboard(url)}
-                    onDeleteImage={handleDeleteImage}
-                    sortField={sortField}
-                    sortDirection={sortDirection}
-                    onSort={(field) => {
-                      if (field === sortField) {
-                        setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-                      } else {
-                        setSortField(field);
-                        setSortDirection('asc');
-                      }
-                    }}
-                  />
-                </TabsContent>
-              </Tabs>
-            )}
+              {isLoading ? (
+                <div className="flex items-center justify-center py-20">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                  <span className="text-white text-lg ml-4">Загрузка изображений...</span>
+                </div>
+              ) : (
+                <div>
+                  {viewMode === 'gallery' && (
+                    <GalleryView
+                      images={filteredImages}
+                      selectedImages={selectedImages}
+                      onImageSelect={handleImageSelect}
+                      gridColumns={gridColumns}
+                      onCopyUrl={(url) => copyToClipboard(url)}
+                      onDeleteImage={handleDeleteImage}
+                    />
+                  )}
+                  
+                  {viewMode === 'list' && (
+                    <ListView
+                      images={filteredImages}
+                      selectedImages={selectedImages}
+                      onImageSelect={handleImageSelect}
+                      onCopyUrl={(url) => copyToClipboard(url)}
+                      onDeleteImage={handleDeleteImage}
+                    />
+                  )}
+                  
+                  {viewMode === 'table' && (
+                    <TableView
+                      images={filteredImages}
+                      selectedImages={selectedImages}
+                      onImageSelect={handleImageSelect}
+                      onCopyUrl={(url) => copyToClipboard(url)}
+                      onDeleteImage={handleDeleteImage}
+                      sortField={sortField}
+                      sortDirection={sortDirection}
+                      onSort={(field) => {
+                        if (field === sortField) {
+                          setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                        } else {
+                          setSortField(field);
+                          setSortDirection('asc');
+                        }
+                      }}
+                    />
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </DragDropProvider>
   );
 };
 

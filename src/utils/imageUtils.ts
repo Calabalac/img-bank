@@ -9,10 +9,11 @@ export interface ImageData {
   mime_type: string | null;
   short_url: string;
   uploaded_at: string;
+  user_id?: string | null;
+  access_type?: 'public' | 'private' | 'shared';
 }
 
 export const generateShortUrl = (filename: string) => {
-  // Используем правильный URL для Edge Function
   return `https://jafuyqfmcpilcvzzmmwq.supabase.co/functions/v1/image-redirect/${filename}`;
 };
 
@@ -37,8 +38,9 @@ export const uploadImageToStorage = async (file: File): Promise<string> => {
   return filename;
 };
 
-export const saveImageMetadata = async (file: File, filename: string): Promise<ImageData> => {
+export const saveImageMetadata = async (file: File, filename: string, accessType: 'public' | 'private' | 'shared' = 'public'): Promise<ImageData> => {
   const shortUrl = generateShortUrl(filename);
+  const user = await supabase.auth.getUser();
   
   const { data, error } = await supabase
     .from('images')
@@ -48,7 +50,9 @@ export const saveImageMetadata = async (file: File, filename: string): Promise<I
       file_path: filename,
       file_size: file.size,
       mime_type: file.type,
-      short_url: shortUrl
+      short_url: shortUrl,
+      user_id: user.data.user?.id || null,
+      access_type: accessType
     })
     .select()
     .single();
@@ -58,6 +62,17 @@ export const saveImageMetadata = async (file: File, filename: string): Promise<I
   }
 
   return data;
+};
+
+export const updateImageAccess = async (imageId: string, accessType: 'public' | 'private' | 'shared'): Promise<void> => {
+  const { error } = await supabase
+    .from('images')
+    .update({ access_type: accessType })
+    .eq('id', imageId);
+
+  if (error) {
+    throw new Error(`Ошибка обновления доступа: ${error.message}`);
+  }
 };
 
 export const getImageByShortUrl = async (shortUrl: string): Promise<ImageData | null> => {
@@ -89,7 +104,6 @@ export const getAllImages = async (): Promise<ImageData[]> => {
 };
 
 export const deleteImage = async (imageId: string, filename: string): Promise<void> => {
-  // Удаляем файл из хранилища
   const { error: storageError } = await supabase.storage
     .from('images')
     .remove([filename]);
@@ -98,7 +112,6 @@ export const deleteImage = async (imageId: string, filename: string): Promise<vo
     console.error('Ошибка удаления файла из хранилища:', storageError);
   }
 
-  // Удаляем запись из базы данных
   const { error: dbError } = await supabase
     .from('images')
     .delete()

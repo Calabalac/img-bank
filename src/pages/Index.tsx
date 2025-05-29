@@ -1,135 +1,168 @@
-
-import { useState, useEffect } from "react";
+import { useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Upload, Link, Images, Plus, FolderOpen } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
+import { 
+  Upload, 
+  FileImage, 
+  Link as LinkIcon, 
+  CheckCircle, 
+  XCircle, 
+  Copy, 
+  Eye,
+  Library,
+  LogOut,
+  LogIn
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { 
-  ImageData,
   uploadImageToStorage, 
   saveImageMetadata, 
-  getAllImages,
-  deleteImage
+  generateShortUrl, 
+  getPublicUrl,
+  ImageData 
 } from "@/utils/imageUtils";
+import { useAuth } from "@/hooks/useAuth";
 
 const Index = () => {
-  const [images, setImages] = useState<ImageData[]>([]);
-  const [urlsTextarea, setUrlsTextarea] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const { user, signOut } = useAuth();
+  const [files, setFiles] = useState<File[]>([]);
+  const [urlText, setUrlText] = useState("");
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadResults, setUploadResults] = useState<{
+    success: ImageData[];
+    failed: { name: string; error: string }[];
+  }>({ success: [], failed: [] });
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Загружаем изображения при запуске
-  useEffect(() => {
-    loadImages();
-  }, []);
-
-  const loadImages = async () => {
+  const handleSignOut = async () => {
     try {
-      const loadedImages = await getAllImages();
-      setImages(loadedImages);
+      await signOut();
+      toast({
+        title: "Выход выполнен",
+        description: "Вы успешно вышли из системы",
+      });
     } catch (error) {
-      console.error('Ошибка загрузки изображений:', error);
       toast({
         title: "Ошибка",
-        description: "Не удалось загрузить изображения",
+        description: "Не удалось выйти из системы",
         variant: "destructive",
       });
     }
   };
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files) return;
+  const handleFileSelect = (selectedFiles: File[]) => {
+    const imageFiles = selectedFiles.filter(file => file.type.startsWith('image/'));
+    if (imageFiles.length !== selectedFiles.length) {
+      toast({
+        title: "Внимание",
+        description: `Выбраны только изображения (${imageFiles.length} из ${selectedFiles.length})`,
+        variant: "destructive",
+      });
+    }
+    setFiles(imageFiles);
+  };
 
-    setIsLoading(true);
-    const uploadPromises = Array.from(files).map(async (file) => {
+  const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const droppedFiles = Array.from(e.dataTransfer.files);
+    handleFileSelect(droppedFiles);
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+  }, []);
+
+  const handleUrlUpload = async () => {
+    if (!urlText.trim()) return;
+
+    const urls = urlText.split('\n').filter(url => url.trim());
+    if (urls.length === 0) return;
+
+    setIsUploading(true);
+    setUploadProgress(0);
+    const results = { success: [] as ImageData[], failed: [] as { name: string; error: string }[] };
+
+    for (let i = 0; i < urls.length; i++) {
+      const url = urls[i].trim();
       try {
-        // Загружаем файл в хранилище
-        const filename = await uploadImageToStorage(file);
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
         
-        // Сохраняем метаданные в базу данных
-        const imageData = await saveImageMetadata(file, filename);
-        
-        return imageData;
-      } catch (error) {
-        console.error('Ошибка загрузки файла:', file.name, error);
-        toast({
-          title: "Ошибка загрузки",
-          description: `Не удалось загрузить файл ${file.name}`,
-          variant: "destructive",
-        });
-        return null;
-      }
-    });
+        const blob = await response.blob();
+        if (!blob.type.startsWith('image/')) {
+          throw new Error('Не является изображением');
+        }
 
-    try {
-      const results = await Promise.all(uploadPromises);
-      const successfulUploads = results.filter(result => result !== null) as ImageData[];
-      
-      if (successfulUploads.length > 0) {
-        setImages(prev => [...successfulUploads, ...prev]);
-        toast({
-          title: "Изображения загружены",
-          description: `Загружено ${successfulUploads.length} из ${files.length} изображений`,
+        const filename = url.split('/').pop() || `image_${Date.now()}.jpg`;
+        const file = new File([blob], filename, { type: blob.type });
+        
+        const uploadedFilename = await uploadImageToStorage(file);
+        const imageData = await saveImageMetadata(file, uploadedFilename, user ? 'private' : 'public');
+        results.success.push(imageData);
+      } catch (error) {
+        results.failed.push({
+          name: url,
+          error: error instanceof Error ? error.message : 'Неизвестная ошибка'
         });
       }
-    } catch (error) {
-      console.error('Ошибка массовой загрузки:', error);
-    } finally {
-      setIsLoading(false);
-      // Очищаем input
-      event.target.value = '';
+      
+      setUploadProgress(((i + 1) / urls.length) * 100);
+    }
+
+    setUploadResults(results);
+    setIsUploading(false);
+    setUrlText("");
+
+    if (results.success.length > 0) {
+      toast({
+        title: "Загрузка завершена",
+        description: `Загружено: ${results.success.length}, ошибок: ${results.failed.length}`,
+      });
     }
   };
 
-  const handleBulkUrls = async () => {
-    const urls = urlsTextarea
-      .split('\n')
-      .map(url => url.trim())
-      .filter(url => url && url.startsWith('http'));
+  const handleFileUpload = async () => {
+    if (files.length === 0) return;
 
-    if (urls.length === 0) return;
+    setIsUploading(true);
+    setUploadProgress(0);
+    const results = { success: [] as ImageData[], failed: [] as { name: string; error: string }[] };
 
-    setIsLoading(true);
-    let successCount = 0;
-
-    for (const url of urls) {
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
       try {
-        const response = await fetch(url, { method: 'HEAD' });
-        const contentType = response.headers.get('content-type');
-        
-        if (!contentType || !contentType.startsWith('image/')) {
-          continue;
-        }
-
-        const imageResponse = await fetch(url);
-        const blob = await imageResponse.blob();
-        
-        const filename = url.split('/').pop() || 'image';
-        const file = new File([blob], filename, { type: contentType });
-
-        const storedFilename = await uploadImageToStorage(file);
-        const imageData = await saveImageMetadata(file, storedFilename);
-
-        setImages(prev => [imageData, ...prev]);
-        successCount++;
+        const uploadedFilename = await uploadImageToStorage(file);
+        const imageData = await saveImageMetadata(file, uploadedFilename, user ? 'private' : 'public');
+        results.success.push(imageData);
       } catch (error) {
-        console.error('Ошибка добавления URL:', url, error);
+        results.failed.push({
+          name: file.name,
+          error: error instanceof Error ? error.message : 'Неизвестная ошибка'
+        });
       }
+      
+      setUploadProgress(((i + 1) / files.length) * 100);
     }
 
-    setUrlsTextarea("");
-    setIsLoading(false);
+    setUploadResults(results);
+    setIsUploading(false);
+    setFiles([]);
 
-    toast({
-      title: "Изображения добавлены",
-      description: `Добавлено ${successCount} из ${urls.length} изображений`,
-    });
+    if (results.success.length > 0) {
+      toast({
+        title: "Загрузка завершена",
+        description: `Загружено: ${results.success.length}, ошибок: ${results.failed.length}`,
+      });
+    }
   };
 
   const copyToClipboard = (text: string) => {
@@ -140,244 +173,256 @@ const Index = () => {
     });
   };
 
-  const handleDeleteImage = async (imageData: ImageData) => {
-    try {
-      await deleteImage(imageData.id, imageData.filename);
-      setImages(prev => prev.filter(img => img.id !== imageData.id));
-      toast({
-        title: "Изображение удалено",
-        description: "Изображение удалено из банка",
-      });
-    } catch (error) {
-      console.error('Ошибка удаления:', error);
-      toast({
-        title: "Ошибка",
-        description: "Не удалось удалить изображение",
-        variant: "destructive",
-      });
-    }
+  const formatFileSize = (bytes: number) => {
+    const sizes = ['Б', 'КБ', 'МБ', 'ГБ'];
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 relative overflow-hidden">
-      {/* Animated background elements */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute w-96 h-96 rounded-full bg-gradient-to-r from-blue-500/10 to-purple-500/10 -top-48 -left-48 animate-pulse"></div>
-        <div className="absolute w-80 h-80 rounded-full bg-gradient-to-r from-purple-500/10 to-pink-500/10 top-1/2 -right-40 animate-pulse delay-1000"></div>
-        <div className="absolute w-64 h-64 rounded-full bg-gradient-to-r from-cyan-500/10 to-blue-500/10 bottom-0 left-1/3 animate-pulse delay-500"></div>
-      </div>
-
-      {/* Hero Header */}
-      <div className="relative">
-        <div className="absolute inset-0 bg-gradient-to-r from-slate-900/90 via-slate-800/90 to-slate-900/90 backdrop-blur-xl"></div>
-        <div className="relative max-w-7xl mx-auto px-6 py-20">
-          <div className="text-center">
-            <div className="flex items-center justify-center mb-8">
-              <div className="relative p-6 backdrop-blur-md bg-white/5 border border-white/10 rounded-3xl shadow-2xl">
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-3xl blur-xl"></div>
-                <Images className="h-16 w-16 text-white relative z-10" />
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      {/* Header */}
+      <div className="border-b border-white/10 backdrop-blur-md bg-white/5 sticky top-0 z-50">
+        <div className="max-w-4xl mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                  <FileImage className="h-4 w-4 text-white" />
+                </div>
+                <span className="text-xl font-bold text-white">Image Hub</span>
               </div>
-            </div>
-            <h1 className="text-7xl font-bold mb-6 bg-gradient-to-r from-white via-blue-100 to-purple-100 bg-clip-text text-transparent">
-              ImageBank
-            </h1>
-            <div className="max-w-3xl mx-auto space-y-4">
-              <p className="text-2xl text-slate-300 font-light leading-relaxed">
-                Корпоративное решение для управления изображениями
-              </p>
-              <p className="text-lg text-slate-400 leading-relaxed">
-                Безопасное хранение, мгновенная доставка и профессиональные инструменты 
-                для работы с визуальным контентом вашей компании
-              </p>
             </div>
             
-            {/* Navigation Buttons */}
-            <div className="mt-12 flex flex-wrap justify-center gap-6">
-              <Button 
+            <div className="flex items-center gap-3">
+              <Button
                 onClick={() => navigate('/library')}
-                className="bg-blue-600 hover:bg-blue-700 text-white h-14 px-8 text-base font-medium transition-all duration-300 shadow-lg hover:shadow-xl border-0"
+                variant="outline"
+                className="backdrop-blur-md bg-white/5 border-white/20 hover:bg-white/10 text-white"
               >
-                <FolderOpen className="h-5 w-5 mr-3" />
-                Открыть библиотеку
+                <Library className="h-4 w-4 mr-2" />
+                Библиотека
               </Button>
-            </div>
-
-            {/* Status indicators */}
-            <div className="mt-12 flex flex-wrap justify-center gap-8 text-sm text-slate-300">
-              <div className="flex items-center gap-3 px-4 py-2 backdrop-blur-md bg-white/5 border border-white/10 rounded-xl">
-                <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
-                <span>Enterprise Security</span>
-              </div>
-              <div className="flex items-center gap-3 px-4 py-2 backdrop-blur-md bg-white/5 border border-white/10 rounded-xl">
-                <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
-                <span>Global CDN</span>
-              </div>
-              <div className="flex items-center gap-3 px-4 py-2 backdrop-blur-md bg-white/5 border border-white/10 rounded-xl">
-                <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
-                <span>API Integration</span>
-              </div>
+              
+              {user ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-slate-300">{user.email}</span>
+                  <Button
+                    onClick={handleSignOut}
+                    variant="outline"
+                    size="sm"
+                    className="backdrop-blur-md bg-white/5 border-white/20 hover:bg-white/10 text-white"
+                  >
+                    <LogOut className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  onClick={() => navigate('/auth')}
+                  variant="outline"
+                  className="backdrop-blur-md bg-white/5 border-white/20 hover:bg-white/10 text-white"
+                >
+                  <LogIn className="h-4 w-4 mr-2" />
+                  Войти
+                </Button>
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 -mt-8 relative z-10">
+      {/* Main Content */}
+      <div className="max-w-4xl mx-auto px-6 py-12">
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-bold text-white mb-4">
+            Загрузите и поделитесь изображениями
+          </h1>
+          <p className="text-xl text-slate-300 max-w-2xl mx-auto">
+            Простой и быстрый способ загружать изображения и получать короткие ссылки для обмена
+          </p>
+        </div>
+
         {/* Upload Cards */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
-          {/* Upload Files */}
-          <Card className="group backdrop-blur-md bg-white/5 border border-white/10 shadow-2xl hover:bg-white/10 transition-all duration-500">
-            <CardHeader className="pb-6">
-              <CardTitle className="flex items-center gap-4 text-white text-xl">
-                <div className="relative p-3 backdrop-blur-md bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-white/20 rounded-2xl">
-                  <Upload className="h-6 w-6 text-white" />
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-2xl blur-lg"></div>
-                </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+          {/* File Upload */}
+          <Card className="backdrop-blur-md bg-white/5 border border-white/10">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-white">
+                <Upload className="h-5 w-5" />
                 Загрузка файлов
               </CardTitle>
-              <CardDescription className="text-slate-300 text-base">
-                Загрузите изображения с локального устройства
-              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div
+                className="border-2 border-dashed border-white/20 rounded-lg p-8 text-center cursor-pointer transition-colors hover:border-white/40 hover:bg-white/5"
+                onDrop={handleDrop}
+                onDragOver={handleDragOver}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <FileImage className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+                <p className="text-white font-medium mb-2">
+                  Перетащите файлы или нажмите для выбора
+                </p>
+                <p className="text-slate-400 text-sm">
+                  Поддерживаются изображения всех популярных форматов
+                </p>
+              </div>
+              
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={(e) => handleFileSelect(Array.from(e.target.files || []))}
+                className="hidden"
+              />
+
+              {files.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="text-white">Выбранные файлы ({files.length})</Label>
+                  <div className="max-h-32 overflow-y-auto space-y-1">
+                    {files.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between bg-white/5 rounded p-2 text-sm">
+                        <span className="text-white truncate">{file.name}</span>
+                        <span className="text-slate-400 ml-2">{formatFileSize(file.size)}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <Button
+                    onClick={handleFileUpload}
+                    disabled={isUploading}
+                    className="w-full bg-blue-600 hover:bg-blue-700"
+                  >
+                    {isUploading ? `Загружаем... ${Math.round(uploadProgress)}%` : "Загрузить файлы"}
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* URL Upload */}
+          <Card className="backdrop-blur-md bg-white/5 border border-white/10">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-white">
+                <LinkIcon className="h-5 w-5" />
+                Загрузка по ссылкам
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="urls" className="text-white">
+                  URL изображений (по одному на строку)
+                </Label>
+                <Textarea
+                  id="urls"
+                  placeholder="https://example.com/image1.jpg&#10;https://example.com/image2.png"
+                  value={urlText}
+                  onChange={(e) => setUrlText(e.target.value)}
+                  className="bg-white/5 border-white/20 text-white placeholder:text-slate-400 min-h-32"
+                />
+              </div>
+              
+              <Button
+                onClick={handleUrlUpload}
+                disabled={!urlText.trim() || isUploading}
+                className="w-full bg-green-600 hover:bg-green-700"
+              >
+                {isUploading ? `Загружаем... ${Math.round(uploadProgress)}%` : "Загрузить по ссылкам"}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Progress */}
+        {isUploading && (
+          <Card className="backdrop-blur-md bg-white/5 border border-white/10 mb-8">
+            <CardContent className="pt-6">
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-white">Прогресс загрузки</span>
+                  <span className="text-slate-300">{Math.round(uploadProgress)}%</span>
+                </div>
+                <Progress value={uploadProgress} className="h-2" />
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Results */}
+        {(uploadResults.success.length > 0 || uploadResults.failed.length > 0) && (
+          <Card className="backdrop-blur-md bg-white/5 border border-white/10">
+            <CardHeader>
+              <CardTitle className="text-white">Результаты загрузки</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-6">
-                <Label htmlFor="file-upload" className="text-sm font-medium text-slate-200">
-                  Выберите файлы
-                </Label>
-                <div className="relative group">
-                  <Input
-                    id="file-upload"
-                    type="file"
-                    multiple
-                    accept="image/*"
-                    onChange={handleFileUpload}
-                    disabled={isLoading}
-                    className="cursor-pointer border-2 border-dashed border-white/20 hover:border-white/40 transition-colors duration-300 bg-white/5 backdrop-blur-md h-16 text-white file:text-white file:bg-blue-600 file:hover:bg-blue-700 file:border-0 file:rounded-lg file:px-4 file:py-2 file:mr-4"
-                  />
-                  <div className="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                    <Plus className="h-6 w-6 text-slate-400 group-hover:text-white transition-colors duration-300" />
+              {uploadResults.success.length > 0 && (
+                <div className="space-y-4 mb-6">
+                  <h3 className="text-green-400 font-medium flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4" />
+                    Успешно загружено ({uploadResults.success.length})
+                  </h3>
+                  <div className="grid gap-3">
+                    {uploadResults.success.map((image, index) => (
+                      <div key={index} className="flex items-center gap-3 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+                        <div className="w-12 h-12 bg-gradient-to-br from-slate-800 to-slate-900 rounded-lg overflow-hidden flex-shrink-0">
+                          <img
+                            src={getPublicUrl(image.filename)}
+                            alt={image.original_name}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-white font-medium truncate">{image.original_name}</p>
+                          <code className="text-xs bg-slate-800/50 px-2 py-1 rounded font-mono text-green-300">
+                            {generateShortUrl(image.filename)}
+                          </code>
+                        </div>
+                        <div className="flex gap-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => window.open(getPublicUrl(image.filename), '_blank')}
+                            className="backdrop-blur-md bg-white/5 border-white/20 hover:bg-white/10 text-white"
+                          >
+                            <Eye className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => copyToClipboard(generateShortUrl(image.filename))}
+                            className="backdrop-blur-md bg-white/5 border-white/20 hover:bg-white/10 text-white"
+                          >
+                            <Copy className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              </div>
+              )}
+
+              {uploadResults.failed.length > 0 && (
+                <div className="space-y-4">
+                  <h3 className="text-red-400 font-medium flex items-center gap-2">
+                    <XCircle className="h-4 w-4" />
+                    Ошибки загрузки ({uploadResults.failed.length})
+                  </h3>
+                  <div className="space-y-2">
+                    {uploadResults.failed.map((error, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+                        <span className="text-white truncate">{error.name}</span>
+                        <Badge variant="destructive" className="ml-2 flex-shrink-0">
+                          {error.error}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
-
-          {/* Bulk URLs */}
-          <Card className="backdrop-blur-md bg-white/5 border border-white/10 shadow-2xl hover:bg-white/10 transition-all duration-500">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-4 text-white text-xl">
-                <div className="relative p-3 backdrop-blur-md bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-white/20 rounded-2xl">
-                  <Link className="h-6 w-6 text-white" />
-                  <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 rounded-2xl blur-lg"></div>
-                </div>
-                Массовое добавление
-              </CardTitle>
-              <CardDescription className="text-slate-300 text-base">
-                Добавьте изображения по ссылкам
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                <Textarea
-                  placeholder="https://example.com/image1.jpg&#10;https://example.com/image2.jpg&#10;https://example.com/image3.jpg"
-                  value={urlsTextarea}
-                  onChange={(e) => setUrlsTextarea(e.target.value)}
-                  disabled={isLoading}
-                  rows={5}
-                  className="border border-white/20 bg-white/5 backdrop-blur-md text-white placeholder:text-slate-400 focus:border-white/40 transition-colors duration-300 resize-none"
-                />
-                <Button 
-                  onClick={handleBulkUrls} 
-                  disabled={isLoading}
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white h-14 text-base font-medium transition-all duration-300 shadow-lg hover:shadow-xl border-0"
-                >
-                  {isLoading ? (
-                    <div className="flex items-center gap-3">
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                      Обработка...
-                    </div>
-                  ) : (
-                    "Добавить изображения"
-                  )}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Quick Stats */}
-        {images.length > 0 && (
-          <Card className="backdrop-blur-md bg-white/5 border border-white/10 shadow-2xl mb-12">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-4 text-white text-2xl">
-                <div className="relative p-3 backdrop-blur-md bg-gradient-to-r from-indigo-500/20 to-purple-500/20 border border-white/20 rounded-2xl">
-                  <Images className="h-6 w-6 text-white" />
-                  <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 rounded-2xl blur-lg"></div>
-                </div>
-                Статистика библиотеки
-                <div className="ml-auto px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-medium shadow-lg">
-                  {images.length} файлов
-                </div>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8">
-                <p className="text-slate-300 text-lg mb-6">
-                  В вашей библиотеке {images.length} изображений
-                </p>
-                <Button 
-                  onClick={() => navigate('/library')}
-                  className="bg-blue-600 hover:bg-blue-700 text-white h-12 px-6 text-base font-medium transition-all duration-300 shadow-lg hover:shadow-xl border-0"
-                >
-                  <FolderOpen className="h-5 w-5 mr-2" />
-                  Перейти в библиотеку
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {images.length === 0 && (
-          <div className="text-center py-20 backdrop-blur-md bg-white/5 border border-white/10 rounded-3xl mb-12">
-            <div className="max-w-md mx-auto">
-              <div className="relative p-8 backdrop-blur-md bg-white/5 border border-white/10 rounded-full w-32 h-32 mx-auto mb-8 flex items-center justify-center">
-                <Images className="h-16 w-16 text-slate-400" />
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-full blur-xl"></div>
-              </div>
-              <h3 className="text-2xl font-semibold text-white mb-4">
-                Библиотека пуста
-              </h3>
-              <p className="text-slate-300 text-lg leading-relaxed">
-                Загрузите первые изображения, чтобы начать работу с корпоративной библиотекой
-              </p>
-            </div>
-          </div>
         )}
       </div>
-
-      {/* Loading Overlay */}
-      {isLoading && (
-        <div className="fixed inset-0 backdrop-blur-md bg-black/50 flex items-center justify-center z-50">
-          <div className="backdrop-blur-md bg-white/10 border border-white/20 rounded-2xl p-8 flex items-center gap-4 shadow-2xl">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-            <span className="text-white text-lg">Обработка изображений...</span>
-          </div>
-        </div>
-      )}
-
-      {/* Footer */}
-      <footer className="mt-20 backdrop-blur-md bg-white/5 border-t border-white/10">
-        <div className="max-w-7xl mx-auto px-6 py-12">
-          <div className="text-center">
-            <div className="flex items-center justify-center gap-3 mb-4">
-              <Images className="h-6 w-6 text-slate-400" />
-              <span className="text-slate-300 font-semibold">ImageBank Enterprise</span>
-            </div>
-            <p className="text-sm text-slate-400">
-              Профессиональное решение для управления корпоративными изображениями
-            </p>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 };

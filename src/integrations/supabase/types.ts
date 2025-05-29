@@ -9,8 +9,107 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      folder_images: {
+        Row: {
+          created_at: string
+          folder_id: string
+          id: string
+          image_id: string
+        }
+        Insert: {
+          created_at?: string
+          folder_id: string
+          id?: string
+          image_id: string
+        }
+        Update: {
+          created_at?: string
+          folder_id?: string
+          id?: string
+          image_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "folder_images_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "folders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "folder_images_image_id_fkey"
+            columns: ["image_id"]
+            isOneToOne: false
+            referencedRelation: "images"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      folder_shares: {
+        Row: {
+          created_at: string
+          folder_id: string
+          id: string
+          shared_by: string
+          shared_with_email: string
+        }
+        Insert: {
+          created_at?: string
+          folder_id: string
+          id?: string
+          shared_by: string
+          shared_with_email: string
+        }
+        Update: {
+          created_at?: string
+          folder_id?: string
+          id?: string
+          shared_by?: string
+          shared_with_email?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "folder_shares_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      folders: {
+        Row: {
+          access_type: Database["public"]["Enums"]["access_type"]
+          color: string
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_type?: Database["public"]["Enums"]["access_type"]
+          color?: string
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_type?: Database["public"]["Enums"]["access_type"]
+          color?: string
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       images: {
         Row: {
+          access_type: Database["public"]["Enums"]["access_type"]
           file_path: string
           file_size: number | null
           filename: string
@@ -19,8 +118,10 @@ export type Database = {
           original_name: string
           short_url: string
           uploaded_at: string
+          user_id: string | null
         }
         Insert: {
+          access_type?: Database["public"]["Enums"]["access_type"]
           file_path: string
           file_size?: number | null
           filename: string
@@ -29,8 +130,10 @@ export type Database = {
           original_name: string
           short_url: string
           uploaded_at?: string
+          user_id?: string | null
         }
         Update: {
+          access_type?: Database["public"]["Enums"]["access_type"]
           file_path?: string
           file_size?: number | null
           filename?: string
@@ -39,6 +142,31 @@ export type Database = {
           original_name?: string
           short_url?: string
           uploaded_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          updated_at: string
+          username: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id: string
+          updated_at?: string
+          username?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          updated_at?: string
+          username?: string | null
         }
         Relationships: []
       }
@@ -50,7 +178,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      access_type: "public" | "private" | "shared"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -165,6 +293,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      access_type: ["public", "private", "shared"],
+    },
   },
 } as const

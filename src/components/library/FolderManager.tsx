@@ -1,20 +1,22 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { FolderPlus, Folder, FolderOpen, Trash2, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { Folder as FolderType } from "@/pages/Library";
 import { ImageData } from "@/utils/imageUtils";
+import { DatabaseFolder, createFolder, getUserFolders, deleteFolder as deleteFolderDB, addImagesToFolder, removeImagesFromFolder, getFolderImages, updateFolder } from "@/utils/folderUtils";
+import { AccessControl } from "./AccessControl";
+import { useDragDrop } from "./DragDropProvider";
 
 interface FolderManagerProps {
-  folders: FolderType[];
-  setFolders: (folders: FolderType[]) => void;
   selectedFolder: string | null;
   setSelectedFolder: (folderId: string | null) => void;
   selectedImages: Set<string>;
   images: ImageData[];
+  onFoldersChange: () => void;
 }
 
 const colors = [
@@ -29,79 +31,172 @@ const colors = [
 ];
 
 export const FolderManager = ({
-  folders,
-  setFolders,
   selectedFolder,
   setSelectedFolder,
   selectedImages,
-  images
+  images,
+  onFoldersChange
 }: FolderManagerProps) => {
+  const [folders, setFolders] = useState<DatabaseFolder[]>([]);
+  const [folderImageCounts, setFolderImageCounts] = useState<Record<string, number>>({});
   const [newFolderName, setNewFolderName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
+  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const { draggedItems, isDragging } = useDragDrop();
 
-  const createFolder = () => {
+  useEffect(() => {
+    loadFolders();
+  }, []);
+
+  useEffect(() => {
+    loadFolderCounts();
+  }, [folders]);
+
+  const loadFolders = async () => {
+    try {
+      setLoading(true);
+      const loadedFolders = await getUserFolders();
+      setFolders(loadedFolders);
+    } catch (error) {
+      console.error('Ошибка загрузки папок:', error);
+      toast({
+        title: "Ошибка",
+        description: "Не удалось загрузить папки",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadFolderCounts = async () => {
+    const counts: Record<string, number> = {};
+    for (const folder of folders) {
+      try {
+        const imageIds = await getFolderImages(folder.id);
+        counts[folder.id] = imageIds.length;
+      } catch (error) {
+        counts[folder.id] = 0;
+      }
+    }
+    setFolderImageCounts(counts);
+  };
+
+  const handleCreateFolder = async () => {
     if (!newFolderName.trim()) return;
 
-    const newFolder: FolderType = {
-      id: Date.now().toString(),
-      name: newFolderName.trim(),
-      imageIds: [],
-      color: colors[Math.floor(Math.random() * colors.length)]
-    };
+    try {
+      const newFolder = await createFolder(
+        newFolderName.trim(),
+        colors[Math.floor(Math.random() * colors.length)]
+      );
 
-    setFolders([...folders, newFolder]);
-    setNewFolderName("");
-    setIsCreating(false);
+      setFolders([newFolder, ...folders]);
+      setNewFolderName("");
+      setIsCreating(false);
+      onFoldersChange();
 
-    toast({
-      title: "Папка создана",
-      description: `Папка "${newFolder.name}" создана`,
-    });
-  };
-
-  const deleteFolder = (folderId: string) => {
-    setFolders(folders.filter(f => f.id !== folderId));
-    if (selectedFolder === folderId) {
-      setSelectedFolder(null);
+      toast({
+        title: "Папка создана",
+        description: `Папка "${newFolder.name}" создана`,
+      });
+    } catch (error) {
+      toast({
+        title: "Ошибка",
+        description: "Не удалось создать папку",
+        variant: "destructive",
+      });
     }
-
-    toast({
-      title: "Папка удалена",
-      description: "Папка удалена (изображения остались в библиотеке)",
-    });
   };
 
-  const addImagesToFolder = (folderId: string, imageIds: string[]) => {
-    setFolders(folders.map(folder => {
-      if (folder.id === folderId) {
-        const newImageIds = [...new Set([...folder.imageIds, ...imageIds])];
-        return { ...folder, imageIds: newImageIds };
+  const handleDeleteFolder = async (folderId: string) => {
+    try {
+      await deleteFolderDB(folderId);
+      setFolders(folders.filter(f => f.id !== folderId));
+      if (selectedFolder === folderId) {
+        setSelectedFolder(null);
       }
-      return folder;
-    }));
+      onFoldersChange();
 
-    toast({
-      title: "Изображения добавлены",
-      description: `Добавлено ${imageIds.length} изображений в папку`,
-    });
+      toast({
+        title: "Папка удалена",
+        description: "Папка удалена (изображения остались в библиотеке)",
+      });
+    } catch (error) {
+      toast({
+        title: "Ошибка",
+        description: "Не удалось удалить папку",
+        variant: "destructive",
+      });
+    }
   };
 
-  const removeImagesFromFolder = (folderId: string, imageIds: string[]) => {
-    setFolders(folders.map(folder => {
-      if (folder.id === folderId) {
-        return {
-          ...folder,
-          imageIds: folder.imageIds.filter(id => !imageIds.includes(id))
-        };
-      }
-      return folder;
-    }));
+  const handleAddImagesToFolder = async (folderId: string, imageIds: string[]) => {
+    try {
+      await addImagesToFolder(folderId, imageIds);
+      loadFolderCounts();
+      onFoldersChange();
 
-    toast({
-      title: "Изображения удалены",
-      description: "Изображения удалены из папки",
-    });
+      toast({
+        title: "Изображения добавлены",
+        description: `Добавлено ${imageIds.length} изображений в папку`,
+      });
+    } catch (error) {
+      toast({
+        title: "Ошибка",
+        description: "Не удалось добавить изображения в папку",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRemoveImagesFromFolder = async (folderId: string, imageIds: string[]) => {
+    try {
+      await removeImagesFromFolder(folderId, imageIds);
+      loadFolderCounts();
+      onFoldersChange();
+
+      toast({
+        title: "Изображения удалены",
+        description: "Изображения удалены из папки",
+      });
+    } catch (error) {
+      toast({
+        title: "Ошибка",
+        description: "Не удалось удалить изображения из папки",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAccessChange = async (folderId: string, accessType: 'public' | 'private' | 'shared') => {
+    try {
+      await updateFolder(folderId, { access_type: accessType });
+      setFolders(folders.map(f => f.id === folderId ? { ...f, access_type: accessType } : f));
+      
+      toast({
+        title: "Доступ обновлен",
+        description: `Папка теперь ${accessType === 'public' ? 'публичная' : accessType === 'shared' ? 'для друзей' : 'приватная'}`,
+      });
+    } catch (error) {
+      toast({
+        title: "Ошибка",
+        description: "Не удалось обновить доступ",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent, folderId: string) => {
+    e.preventDefault();
+    if (draggedItems.length > 0) {
+      handleAddImagesToFolder(folderId, draggedItems);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
   };
 
   return (
@@ -113,7 +208,6 @@ export const FolderManager = ({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* All Images */}
         <Button
           variant={selectedFolder === null ? 'default' : 'ghost'}
           onClick={() => setSelectedFolder(null)}
@@ -130,64 +224,82 @@ export const FolderManager = ({
           </Badge>
         </Button>
 
-        {/* Existing Folders */}
-        {folders.map((folder) => (
-          <div key={folder.id} className="space-y-2">
-            <Button
-              variant={selectedFolder === folder.id ? 'default' : 'ghost'}
-              onClick={() => setSelectedFolder(folder.id)}
-              className={`w-full justify-start ${
-                selectedFolder === folder.id 
-                  ? 'bg-blue-600 text-white' 
-                  : 'text-slate-300 hover:text-white hover:bg-white/10'
-              }`}
-            >
-              <div className={`w-3 h-3 rounded-full mr-2 ${folder.color}`}></div>
-              <span className="truncate">{folder.name}</span>
-              <Badge variant="secondary" className="ml-auto bg-white/10 text-white">
-                {folder.imageIds.length}
-              </Badge>
-            </Button>
-
-            {selectedFolder === folder.id && (
-              <div className="pl-4 space-y-2">
-                {selectedImages.size > 0 && (
-                  <div className="flex gap-1">
-                    <Button
-                      size="sm"
-                      onClick={() => addImagesToFolder(folder.id, Array.from(selectedImages))}
-                      className="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs"
-                    >
-                      <Plus className="h-3 w-3 mr-1" />
-                      Добавить
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => removeImagesFromFolder(folder.id, Array.from(selectedImages))}
-                      className="flex-1 bg-red-500/10 border-red-500/20 hover:bg-red-500/20 text-red-400 text-xs"
-                    >
-                      <Trash2 className="h-3 w-3 mr-1" />
-                      Убрать
-                    </Button>
-                  </div>
-                )}
-                
+        {loading ? (
+          <div className="text-center text-slate-400">Загрузка...</div>
+        ) : (
+          folders.map((folder) => (
+            <div key={folder.id} className="space-y-2">
+              <div 
+                className={`rounded-lg p-2 transition-colors ${
+                  isDragging ? 'border-2 border-dashed border-blue-500/50 bg-blue-500/10' : ''
+                }`}
+                onDrop={(e) => handleDrop(e, folder.id)}
+                onDragOver={handleDragOver}
+              >
                 <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => deleteFolder(folder.id)}
-                  className="w-full bg-red-500/10 border-red-500/20 hover:bg-red-500/20 text-red-400 text-xs"
+                  variant={selectedFolder === folder.id ? 'default' : 'ghost'}
+                  onClick={() => setSelectedFolder(folder.id)}
+                  className={`w-full justify-start ${
+                    selectedFolder === folder.id 
+                      ? 'bg-blue-600 text-white' 
+                      : 'text-slate-300 hover:text-white hover:bg-white/10'
+                  }`}
                 >
-                  <Trash2 className="h-3 w-3 mr-1" />
-                  Удалить папку
+                  <div className={`w-3 h-3 rounded-full mr-2 ${folder.color}`}></div>
+                  <span className="truncate">{folder.name}</span>
+                  <Badge variant="secondary" className="ml-auto bg-white/10 text-white">
+                    {folderImageCounts[folder.id] || 0}
+                  </Badge>
                 </Button>
-              </div>
-            )}
-          </div>
-        ))}
 
-        {/* Create New Folder */}
+                <div className="mt-2 flex items-center justify-between">
+                  <AccessControl
+                    accessType={folder.access_type}
+                    onAccessChange={(accessType) => handleAccessChange(folder.id, accessType)}
+                    size="sm"
+                  />
+                </div>
+              </div>
+
+              {selectedFolder === folder.id && (
+                <div className="pl-4 space-y-2">
+                  {selectedImages.size > 0 && (
+                    <div className="flex gap-1">
+                      <Button
+                        size="sm"
+                        onClick={() => handleAddImagesToFolder(folder.id, Array.from(selectedImages))}
+                        className="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs"
+                      >
+                        <Plus className="h-3 w-3 mr-1" />
+                        Добавить
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleRemoveImagesFromFolder(folder.id, Array.from(selectedImages))}
+                        className="flex-1 bg-red-500/10 border-red-500/20 hover:bg-red-500/20 text-red-400 text-xs"
+                      >
+                        <Trash2 className="h-3 w-3 mr-1" />
+                        Убрать
+                      </Button>
+                    </div>
+                  )}
+                  
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleDeleteFolder(folder.id)}
+                    className="w-full bg-red-500/10 border-red-500/20 hover:bg-red-500/20 text-red-400 text-xs"
+                  >
+                    <Trash2 className="h-3 w-3 mr-1" />
+                    Удалить папку
+                  </Button>
+                </div>
+              )}
+            </div>
+          ))
+        )}
+
         {isCreating ? (
           <div className="space-y-2">
             <Input
@@ -195,7 +307,7 @@ export const FolderManager = ({
               value={newFolderName}
               onChange={(e) => setNewFolderName(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') createFolder();
+                if (e.key === 'Enter') handleCreateFolder();
                 if (e.key === 'Escape') {
                   setIsCreating(false);
                   setNewFolderName("");
@@ -207,7 +319,7 @@ export const FolderManager = ({
             <div className="flex gap-2">
               <Button
                 size="sm"
-                onClick={createFolder}
+                onClick={handleCreateFolder}
                 className="flex-1 bg-green-600 hover:bg-green-700 text-white"
               >
                 Создать
@@ -242,7 +354,7 @@ export const FolderManager = ({
               Выбрано изображений: {selectedImages.size}
             </p>
             <p className="text-xs text-slate-500">
-              Выберите папку выше и нажмите "Добавить" для перемещения
+              Перетащите изображения на папку или используйте кнопки выше
             </p>
           </div>
         )}
