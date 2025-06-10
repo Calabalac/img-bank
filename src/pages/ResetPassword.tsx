@@ -14,20 +14,51 @@ const ResetPassword = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [isValidToken, setIsValidToken] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Извлекаем токен из URL
-    const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    const token = hashParams.get('access_token');
-    if (token) {
-      setAccessToken(token);
-    } else {
-      navigate('/auth');
-    }
-  }, [navigate]);
+    // Проверяем токен восстановления пароля из URL
+    const checkRecoveryToken = async () => {
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const accessToken = hashParams.get('access_token');
+      const refreshToken = hashParams.get('refresh_token');
+      const type = hashParams.get('type');
+      
+      if (accessToken && refreshToken && type === 'recovery') {
+        try {
+          // Устанавливаем сессию с токеном восстановления
+          const { data, error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          });
+          
+          if (!error && data.session) {
+            setIsValidToken(true);
+            // Очищаем URL от токенов
+            window.history.replaceState({}, document.title, '/reset-password');
+          } else {
+            console.error('Invalid recovery token:', error);
+            toast({
+              title: "Недействительная ссылка",
+              description: "Ссылка для восстановления пароля недействительна или устарела",
+              variant: "destructive",
+            });
+            navigate('/auth');
+          }
+        } catch (error) {
+          console.error('Error processing recovery token:', error);
+          navigate('/auth');
+        }
+      } else {
+        // Если нет токена восстановления, перенаправляем на страницу авторизации
+        navigate('/auth');
+      }
+    };
+
+    checkRecoveryToken();
+  }, [navigate, toast]);
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,11 +91,15 @@ const ResetPassword = () => {
 
       toast({
         title: "Пароль обновлен!",
-        description: "Ваш пароль успешно изменен",
+        description: "Ваш пароль успешно изменен. Перенаправляем на главную страницу...",
       });
       
-      navigate('/');
+      // Небольшая задержка для показа уведомления
+      setTimeout(() => {
+        navigate('/');
+      }, 2000);
     } catch (error: any) {
+      console.error('Password update error:', error);
       toast({
         title: "Ошибка",
         description: error.message || "Не удалось обновить пароль",
@@ -75,8 +110,16 @@ const ResetPassword = () => {
     }
   };
 
-  if (!accessToken) {
-    return null;
+  if (!isValidToken) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-6">
+        <Card className="w-full max-w-md backdrop-blur-md bg-white/5 border border-white/10">
+          <CardContent className="flex items-center justify-center p-6">
+            <p className="text-white">Проверяем ссылку для восстановления пароля...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (
@@ -99,6 +142,7 @@ const ResetPassword = () => {
                   className="bg-white/5 border-white/20 text-white pr-10"
                   required
                   minLength={6}
+                  placeholder="Минимум 6 символов"
                 />
                 <Button
                   type="button"
@@ -125,6 +169,7 @@ const ResetPassword = () => {
                 className="bg-white/5 border-white/20 text-white"
                 required
                 minLength={6}
+                placeholder="Повторите пароль"
               />
             </div>
             <Button 
@@ -133,6 +178,14 @@ const ResetPassword = () => {
               disabled={loading}
             >
               {loading ? "Обновляем..." : "Обновить пароль"}
+            </Button>
+            <Button 
+              type="button" 
+              variant="ghost"
+              className="w-full text-white/70 hover:text-white hover:bg-white/10" 
+              onClick={() => navigate('/auth')}
+            >
+              Вернуться к входу
             </Button>
           </form>
         </CardContent>

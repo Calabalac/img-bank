@@ -26,6 +26,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
       const accessToken = hashParams.get('access_token');
       const refreshToken = hashParams.get('refresh_token');
+      const type = hashParams.get('type');
       
       if (accessToken && refreshToken) {
         try {
@@ -34,8 +35,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             refresh_token: refreshToken
           });
           
+          if (!error && type === 'recovery') {
+            // Если это токен восстановления пароля, перенаправляем на страницу сброса
+            window.history.replaceState({}, document.title, '/reset-password' + window.location.hash);
+            return;
+          }
+          
           if (!error) {
-            // Очищаем URL от токенов
+            // Очищаем URL от токенов для обычной аутентификации
             window.history.replaceState({}, document.title, window.location.pathname);
           }
         } catch (error) {
