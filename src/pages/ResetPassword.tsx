@@ -23,6 +23,27 @@ const ResetPassword = () => {
     // Проверяем сессию для токена восстановления пароля
     const checkRecoverySession = async () => {
       try {
+        // Сначала проверяем URL параметры
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+        const type = urlParams.get('type');
+        
+        console.log('Reset password URL params:', { token: !!token, type });
+        
+        // Если есть токен в URL, пытаемся его обработать
+        if (token && type === 'recovery') {
+          console.log('Processing recovery token from URL');
+          
+          // Очищаем URL от параметров
+          window.history.replaceState({}, document.title, '/reset-password');
+          
+          // Устанавливаем токен как действительный
+          setIsValidToken(true);
+          setCheckingToken(false);
+          return;
+        }
+        
+        // Если нет токена в URL, проверяем текущую сессию
         const { data: { session }, error } = await supabase.auth.getSession();
         
         console.log('Reset password session check:', { session: !!session, error });

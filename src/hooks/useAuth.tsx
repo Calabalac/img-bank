@@ -28,8 +28,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const refreshToken = hashParams.get('refresh_token');
       const type = hashParams.get('type');
       
-      console.log('Initial auth check - Hash params:', { accessToken: !!accessToken, refreshToken: !!refreshToken, type });
+      // Также проверяем query параметры для токенов восстановления
+      const urlParams = new URLSearchParams(window.location.search);
+      const recoveryToken = urlParams.get('token');
+      const recoveryType = urlParams.get('type');
       
+      console.log('Initial auth check - Hash params:', { accessToken: !!accessToken, refreshToken: !!refreshToken, type });
+      console.log('Initial auth check - URL params:', { recoveryToken: !!recoveryToken, recoveryType });
+      
+      // Обрабатываем токены из хэша
       if (accessToken && refreshToken) {
         try {
           // Устанавливаем сессию с токенами
@@ -58,9 +65,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           console.error('Error setting session:', error);
         }
       }
+      
+      // Обрабатываем прямые ссылки восстановления от Supabase
+      if (recoveryToken && recoveryType === 'recovery') {
+        console.log('Direct recovery link detected, redirecting to reset-password');
+        // Перенаправляем на страницу сброса пароля с токеном
+        window.location.href = `/reset-password?token=${recoveryToken}&type=${recoveryType}`;
+        return;
+      }
 
       // Получаем текущую сессию если нет токенов в URL
-      if (!accessToken) {
+      if (!accessToken && !recoveryToken) {
         const { data: { session } } = await supabase.auth.getSession();
         console.log('Initial session check:', session?.user?.email);
         setSession(session);
