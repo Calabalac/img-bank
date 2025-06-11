@@ -21,14 +21,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Обрабатываем хэш URL для токенов аутентификации
-    const handleAuthHash = async () => {
+    // Обрабатываем хэш URL для токенов аутентификации при загрузке
+    const handleInitialAuth = async () => {
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
       const accessToken = hashParams.get('access_token');
       const refreshToken = hashParams.get('refresh_token');
       const type = hashParams.get('type');
       
-      console.log('Auth hash params:', { accessToken: !!accessToken, refreshToken: !!refreshToken, type });
+      console.log('Initial auth check - Hash params:', { accessToken: !!accessToken, refreshToken: !!refreshToken, type });
       
       if (accessToken && refreshToken) {
         try {
@@ -58,12 +58,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           console.error('Error setting session:', error);
         }
       }
+
+      // Получаем текущую сессию если нет токенов в URL
+      if (!accessToken) {
+        const { data: { session } } = await supabase.auth.getSession();
+        console.log('Initial session check:', session?.user?.email);
+        setSession(session);
+        setUser(session?.user ?? null);
+      }
+      
+      setLoading(false);
     };
 
-    // Проверяем наличие токенов в URL при загрузке
-    if (window.location.hash.includes('access_token')) {
-      handleAuthHash();
-    }
+    // Выполняем начальную проверку
+    handleInitialAuth();
 
     // Устанавливаем слушатель изменений аутентификации
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -74,14 +82,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setLoading(false);
       }
     );
-
-    // Получаем текущую сессию
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('Initial session check:', session?.user?.email);
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
 
     return () => subscription.unsubscribe();
   }, []);
