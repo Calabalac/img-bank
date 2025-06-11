@@ -15,49 +15,40 @@ const ResetPassword = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isValidToken, setIsValidToken] = useState(false);
+  const [checkingToken, setCheckingToken] = useState(true);
   const { toast } = useToast();
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Проверяем токен восстановления пароля из URL
-    const checkRecoveryToken = async () => {
-      const hashParams = new URLSearchParams(window.location.hash.substring(1));
-      const accessToken = hashParams.get('access_token');
-      const refreshToken = hashParams.get('refresh_token');
-      const type = hashParams.get('type');
-      
-      if (accessToken && refreshToken && type === 'recovery') {
-        try {
-          // Устанавливаем сессию с токеном восстановления
-          const { data, error } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken
+    // Проверяем сессию для токена восстановления пароля
+    const checkRecoverySession = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        console.log('Reset password session check:', { session: !!session, error });
+        
+        if (session && session.user) {
+          // Если есть активная сессия, значит токен восстановления действителен
+          setIsValidToken(true);
+          console.log('Valid recovery session found');
+        } else {
+          console.log('No valid session, redirecting to auth');
+          toast({
+            title: "Недействительная ссылка",
+            description: "Ссылка для восстановления пароля недействительна или устарела",
+            variant: "destructive",
           });
-          
-          if (!error && data.session) {
-            setIsValidToken(true);
-            // Очищаем URL от токенов
-            window.history.replaceState({}, document.title, '/reset-password');
-          } else {
-            console.error('Invalid recovery token:', error);
-            toast({
-              title: "Недействительная ссылка",
-              description: "Ссылка для восстановления пароля недействительна или устарела",
-              variant: "destructive",
-            });
-            navigate('/auth');
-          }
-        } catch (error) {
-          console.error('Error processing recovery token:', error);
           navigate('/auth');
         }
-      } else {
-        // Если нет токена восстановления, перенаправляем на страницу авторизации
+      } catch (error) {
+        console.error('Error checking recovery session:', error);
         navigate('/auth');
+      } finally {
+        setCheckingToken(false);
       }
     };
 
-    checkRecoveryToken();
+    checkRecoverySession();
   }, [navigate, toast]);
 
   const handleResetPassword = async (e: React.FormEvent) => {
@@ -110,12 +101,27 @@ const ResetPassword = () => {
     }
   };
 
+  if (checkingToken) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-6">
+        <Card className="w-full max-w-md backdrop-blur-md bg-white/5 border border-white/10">
+          <CardContent className="flex items-center justify-center p-6">
+            <div className="flex items-center">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white mr-3"></div>
+              <p className="text-white">Проверяем ссылку для восстановления пароля...</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (!isValidToken) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-6">
         <Card className="w-full max-w-md backdrop-blur-md bg-white/5 border border-white/10">
           <CardContent className="flex items-center justify-center p-6">
-            <p className="text-white">Проверяем ссылку для восстановления пароля...</p>
+            <p className="text-white text-center">Недействительная ссылка восстановления. Перенаправляем...</p>
           </CardContent>
         </Card>
       </div>

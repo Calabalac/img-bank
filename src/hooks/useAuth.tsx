@@ -28,22 +28,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const refreshToken = hashParams.get('refresh_token');
       const type = hashParams.get('type');
       
+      console.log('Auth hash params:', { accessToken: !!accessToken, refreshToken: !!refreshToken, type });
+      
       if (accessToken && refreshToken) {
         try {
+          // Устанавливаем сессию с токенами
           const { data, error } = await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken
           });
           
-          if (!error && type === 'recovery') {
-            // Если это токен восстановления пароля, перенаправляем на страницу сброса
-            window.history.replaceState({}, document.title, '/reset-password' + window.location.hash);
-            return;
-          }
+          console.log('Session set result:', { data: !!data, error });
           
-          if (!error) {
-            // Очищаем URL от токенов для обычной аутентификации
-            window.history.replaceState({}, document.title, window.location.pathname);
+          if (!error && data.session) {
+            // Если это токен восстановления пароля, перенаправляем на страницу сброса
+            if (type === 'recovery') {
+              console.log('Recovery token detected, redirecting to reset-password');
+              // Очищаем URL и перенаправляем на страницу сброса пароля
+              window.history.replaceState({}, document.title, '/reset-password');
+              // Принудительно обновляем location для корректного роутинга
+              window.location.href = '/reset-password';
+              return;
+            } else {
+              // Для обычной аутентификации очищаем URL
+              window.history.replaceState({}, document.title, '/');
+            }
           }
         } catch (error) {
           console.error('Error setting session:', error);
@@ -51,12 +60,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     };
 
-    handleAuthHash();
+    // Проверяем наличие токенов в URL при загрузке
+    if (window.location.hash.includes('access_token')) {
+      handleAuthHash();
+    }
 
     // Устанавливаем слушатель изменений аутентификации
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        console.log('Auth state changed:', event, session);
+        console.log('Auth state changed:', event, session?.user?.email);
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
@@ -65,6 +77,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     // Получаем текущую сессию
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Initial session check:', session?.user?.email);
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
