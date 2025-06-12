@@ -1,12 +1,12 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 
@@ -17,24 +17,76 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
-  const { signIn, signUp, resetPassword } = useAuth();
+  const [activeTab, setActiveTab] = useState('signin');
+  
+  const { signIn, signUp, resetPassword, user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (user && !authLoading) {
+      console.log('User already authenticated, redirecting to home');
+      navigate('/');
+    }
+  }, [user, authLoading, navigate]);
+
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const validatePassword = (password: string) => {
+    return password.length >= 6;
+  };
+
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!validateEmail(email)) {
+      toast({
+        title: "Неверный email",
+        description: "Пожалуйста, введите корректный email адрес",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!validatePassword(password)) {
+      toast({
+        title: "Короткий пароль",
+        description: "Пароль должен содержать минимум 6 символов",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setLoading(true);
       await signIn(email, password);
+      
       toast({
         title: "Добро пожаловать!",
-        description: "Вы успешно вошли в систему",
+        description: "Вход выполнен успешно",
       });
+      
       navigate('/');
     } catch (error: any) {
+      console.error('Sign in error:', error);
+      
+      let errorMessage = "Проверьте email и пароль";
+      
+      if (error.message?.includes('Invalid login credentials')) {
+        errorMessage = "Неверный email или пароль";
+      } else if (error.message?.includes('Email not confirmed')) {
+        errorMessage = "Подтвердите email перед входом";
+      } else if (error.message?.includes('Too many requests')) {
+        errorMessage = "Слишком много попыток. Попробуйте позже";
+      }
+      
       toast({
         title: "Ошибка входа",
-        description: error.message || "Проверьте email и пароль",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -44,17 +96,63 @@ const Auth = () => {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!username.trim()) {
+      toast({
+        title: "Требуется имя пользователя",
+        description: "Пожалуйста, введите имя пользователя",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!validateEmail(email)) {
+      toast({
+        title: "Неверный email",
+        description: "Пожалуйста, введите корректный email адрес",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!validatePassword(password)) {
+      toast({
+        title: "Короткий пароль",
+        description: "Пароль должен содержать минимум 6 символов",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setLoading(true);
       await signUp(email, password, username);
+      
       toast({
         title: "Регистрация успешна!",
         description: "Проверьте email для подтверждения аккаунта",
       });
+      
+      // Switch to sign in tab
+      setActiveTab('signin');
+      setPassword('');
     } catch (error: any) {
+      console.error('Sign up error:', error);
+      
+      let errorMessage = "Попробуйте еще раз";
+      
+      if (error.message?.includes('User already registered')) {
+        errorMessage = "Пользователь с таким email уже существует";
+        setActiveTab('signin');
+      } else if (error.message?.includes('Password should be at least 6 characters')) {
+        errorMessage = "Пароль должен содержать минимум 6 символов";
+      } else if (error.message?.includes('Signup is disabled')) {
+        errorMessage = "Регистрация временно отключена";
+      }
+      
       toast({
         title: "Ошибка регистрации",
-        description: error.message || "Попробуйте еще раз",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -64,10 +162,11 @@ const Auth = () => {
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) {
+    
+    if (!validateEmail(email)) {
       toast({
-        title: "Введите email",
-        description: "Пожалуйста, введите ваш email адрес",
+        title: "Неверный email",
+        description: "Пожалуйста, введите корректный email адрес",
         variant: "destructive",
       });
       return;
@@ -76,21 +175,41 @@ const Auth = () => {
     try {
       setLoading(true);
       await resetPassword(email);
+      
       toast({
         title: "Письмо отправлено!",
         description: "Проверьте email для восстановления пароля",
       });
+      
       setShowForgotPassword(false);
     } catch (error: any) {
+      console.error('Reset password error:', error);
+      
       toast({
         title: "Ошибка",
-        description: error.message || "Не удалось отправить письмо",
+        description: "Не удалось отправить письмо. Попробуйте позже",
         variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
   };
+
+  // Show loading state while checking authentication
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-6">
+        <Card className="w-full max-w-md backdrop-blur-md bg-white/5 border border-white/10">
+          <CardContent className="flex items-center justify-center p-6">
+            <div className="flex items-center">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white mr-3"></div>
+              <p className="text-white">Загрузка...</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (showForgotPassword) {
     return (
@@ -110,6 +229,7 @@ const Auth = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="bg-white/5 border-white/20 text-white"
+                  placeholder="your@email.com"
                   required
                 />
               </div>
@@ -140,10 +260,10 @@ const Auth = () => {
       <Card className="w-full max-w-md backdrop-blur-md bg-white/5 border border-white/10">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl text-white">Image Hub</CardTitle>
-          <p className="text-slate-300">Войдите в свой аккаунт</p>
+          <p className="text-slate-300">Добро пожаловать</p>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="signin" className="w-full">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-6 bg-white/10">
               <TabsTrigger value="signin" className="text-white data-[state=active]:bg-white/20">
                 Вход
@@ -156,25 +276,27 @@ const Auth = () => {
             <TabsContent value="signin">
               <form onSubmit={handleSignIn} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email" className="text-white">Email</Label>
+                  <Label htmlFor="signin-email" className="text-white">Email</Label>
                   <Input
-                    id="email"
+                    id="signin-email"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="bg-white/5 border-white/20 text-white"
+                    placeholder="your@email.com"
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="password" className="text-white">Пароль</Label>
+                  <Label htmlFor="signin-password" className="text-white">Пароль</Label>
                   <div className="relative">
                     <Input
-                      id="password"
+                      id="signin-password"
                       type={showPassword ? "text" : "password"}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       className="bg-white/5 border-white/20 text-white pr-10"
+                      placeholder="Минимум 6 символов"
                       required
                     />
                     <Button
@@ -220,6 +342,7 @@ const Auth = () => {
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     className="bg-white/5 border-white/20 text-white"
+                    placeholder="Ваше имя"
                     required
                   />
                 </div>
@@ -231,6 +354,7 @@ const Auth = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="bg-white/5 border-white/20 text-white"
+                    placeholder="your@email.com"
                     required
                   />
                 </div>
@@ -243,6 +367,7 @@ const Auth = () => {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       className="bg-white/5 border-white/20 text-white pr-10"
+                      placeholder="Минимум 6 символов"
                       required
                     />
                     <Button
