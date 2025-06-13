@@ -1,4 +1,3 @@
-
 import { useState, useEffect, createContext, useContext } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -9,6 +8,7 @@ interface AuthContextType {
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, username: string) => Promise<void>;
+  signInWithMagicLink: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
 }
@@ -23,10 +23,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     let mounted = true;
 
-    // Простая инициализация без сложной логики
     const initAuth = async () => {
       try {
-        // Получаем текущую сессию
         const { data: { session: currentSession }, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -52,7 +50,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     };
 
-    // Слушатель изменений состояния аутентификации
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         console.log('Auth state change:', event, session?.user?.email || 'No user');
@@ -94,6 +91,32 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.log('Sign in successful:', data.user?.email);
     } catch (error) {
       console.error('Sign in failed:', error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signInWithMagicLink = async (email: string) => {
+    try {
+      setLoading(true);
+      console.log('Sending magic link to:', email);
+      
+      const { error } = await supabase.auth.signInWithOtp({
+        email: email.toLowerCase().trim(),
+        options: {
+          emailRedirectTo: `${window.location.origin}/`,
+        },
+      });
+      
+      if (error) {
+        console.error('Magic link error:', error);
+        throw error;
+      }
+      
+      console.log('Magic link sent successfully');
+    } catch (error) {
+      console.error('Magic link failed:', error);
       throw error;
     } finally {
       setLoading(false);
@@ -174,7 +197,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signIn, signUp, signOut, resetPassword }}>
+    <AuthContext.Provider value={{ user, session, loading, signIn, signUp, signInWithMagicLink, signOut, resetPassword }}>
       {children}
     </AuthContext.Provider>
   );

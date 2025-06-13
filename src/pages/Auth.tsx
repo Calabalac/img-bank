@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Mail } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 
@@ -17,13 +16,13 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [showMagicLink, setShowMagicLink] = useState(false);
   const [activeTab, setActiveTab] = useState('signin');
   
-  const { signIn, signUp, resetPassword, user, loading: authLoading } = useAuth();
+  const { signIn, signUp, signInWithMagicLink, resetPassword, user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Перенаправление если уже авторизован
   useEffect(() => {
     if (user && !authLoading) {
       console.log('User authenticated, redirecting to home');
@@ -72,6 +71,41 @@ const Auth = () => {
     }
   };
 
+  const handleMagicLink = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!email) {
+      toast({
+        title: "Введите email",
+        description: "Email обязателен для отправки кода",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await signInWithMagicLink(email);
+      
+      toast({
+        title: "Код отправлен!",
+        description: "Проверьте почту и перейдите по ссылке",
+      });
+      
+      setShowMagicLink(false);
+    } catch (error: any) {
+      console.error('Magic link error:', error);
+      
+      toast({
+        title: "Ошибка",
+        description: "Не удалось отправить код на почту",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -102,7 +136,6 @@ const Auth = () => {
         description: "Проверьте email для подтверждения аккаунта",
       });
       
-      // Переключаемся на вход
       setActiveTab('signin');
       setPassword('');
     } catch (error: any) {
@@ -160,7 +193,6 @@ const Auth = () => {
     }
   };
 
-  // Показываем загрузку во время проверки аутентификации
   if (authLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-6">
@@ -176,7 +208,53 @@ const Auth = () => {
     );
   }
 
-  // Форма восстановления пароля
+  if (showMagicLink) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-6">
+        <Card className="w-full max-w-md backdrop-blur-md bg-white/5 border border-white/10">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl text-white flex items-center justify-center gap-2">
+              <Mail className="h-6 w-6" />
+              Вход по коду
+            </CardTitle>
+            <p className="text-slate-300">Мы отправим код на вашу почту</p>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleMagicLink} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="magic-email" className="text-white">Email</Label>
+                <Input
+                  id="magic-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="bg-white/5 border-white/20 text-white"
+                  placeholder="your@email.com"
+                  required
+                />
+              </div>
+              <Button 
+                type="submit" 
+                className="w-full bg-purple-600 hover:bg-purple-700" 
+                disabled={loading}
+              >
+                {loading ? "Отправляем..." : "Отправить код"}
+              </Button>
+              <Button 
+                type="button" 
+                variant="ghost"
+                className="w-full text-white hover:bg-white/10" 
+                onClick={() => setShowMagicLink(false)}
+              >
+                Назад к входу
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (showForgotPassword) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-6">
@@ -221,7 +299,6 @@ const Auth = () => {
     );
   }
 
-  // Основная форма аутентификации
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-6">
       <Card className="w-full max-w-md backdrop-blur-md bg-white/5 border border-white/10">
@@ -284,6 +361,19 @@ const Auth = () => {
                 >
                   {loading ? "Входим..." : "Войти"}
                 </Button>
+                
+                <div className="flex flex-col gap-2">
+                  <Button 
+                    type="button" 
+                    variant="outline"
+                    className="w-full border-white/20 text-white hover:bg-white/10 bg-transparent"
+                    onClick={() => setShowMagicLink(true)}
+                  >
+                    <Mail className="h-4 w-4 mr-2" />
+                    Войти по коду из почты
+                  </Button>
+                </div>
+                
                 <Button 
                   type="button" 
                   variant="ghost"
