@@ -23,74 +23,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     let mounted = true;
 
-    const initializeAuth = async () => {
+    // Простая инициализация без сложной логики
+    const initAuth = async () => {
       try {
-        // Сначала очищаем возможные некорректные токены
-        const hash = window.location.hash;
-        const urlParams = new URLSearchParams(window.location.search);
-        
-        // Check for recovery tokens in URL
-        const hashParams = new URLSearchParams(hash.substring(1));
-        const accessToken = hashParams.get('access_token');
-        const refreshToken = hashParams.get('refresh_token');
-        const type = hashParams.get('type');
-        
-        // Check for direct recovery parameters
-        const recoveryToken = urlParams.get('token');
-        const recoveryType = urlParams.get('type');
-        
-        console.log('Auth initialization - Hash tokens:', { accessToken: !!accessToken, refreshToken: !!refreshToken, type });
-        console.log('Auth initialization - URL params:', { recoveryToken: !!recoveryToken, recoveryType });
-
-        // Handle recovery tokens
-        if (accessToken && refreshToken && type === 'recovery') {
-          console.log('Processing recovery tokens from hash');
-          
-          const { data, error } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken
-          });
-          
-          if (!error && data.session && mounted) {
-            setSession(data.session);
-            setUser(data.session.user);
-            
-            // Clear URL and redirect to reset password
-            window.history.replaceState({}, document.title, '/reset-password');
-            window.location.href = '/reset-password';
-            return;
-          }
-        }
-        
-        // Handle direct recovery links
-        if (recoveryToken && recoveryType === 'recovery') {
-          console.log('Processing direct recovery link');
-          window.location.href = `/reset-password?token=${recoveryToken}&type=${recoveryType}`;
-          return;
-        }
-
-        // Get current session
+        // Получаем текущую сессию
         const { data: { session: currentSession }, error } = await supabase.auth.getSession();
         
         if (error) {
           console.error('Session error:', error);
-          // Clear potentially corrupted session
           await supabase.auth.signOut();
         }
         
         if (mounted) {
           setSession(currentSession);
           setUser(currentSession?.user ?? null);
-          console.log('Initial session loaded:', currentSession?.user?.email || 'No user');
+          console.log('Auth initialized:', currentSession?.user?.email || 'No user');
         }
-
-        // Clean up URL if it has auth parameters
-        if (hash.includes('access_token') || hash.includes('type=')) {
-          window.history.replaceState({}, document.title, window.location.pathname);
-        }
-        
       } catch (error) {
-        console.error('Auth initialization error:', error);
+        console.error('Auth init error:', error);
         if (mounted) {
           setSession(null);
           setUser(null);
@@ -102,30 +52,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     };
 
-    // Set up auth state listener
+    // Слушатель изменений состояния аутентификации
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         console.log('Auth state change:', event, session?.user?.email || 'No user');
         
         if (mounted) {
           setSession(session);
           setUser(session?.user ?? null);
           
-          // Handle sign out
-          if (event === 'SIGNED_OUT') {
-            setLoading(false);
-          }
-          
-          // Handle successful sign in
-          if (event === 'SIGNED_IN' && session) {
+          if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
             setLoading(false);
           }
         }
       }
     );
 
-    // Initialize auth
-    initializeAuth();
+    initAuth();
 
     return () => {
       mounted = false;
@@ -134,8 +77,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    setLoading(true);
     try {
+      setLoading(true);
+      console.log('Attempting sign in for:', email);
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.toLowerCase().trim(),
         password,
@@ -156,8 +101,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signUp = async (email: string, password: string, username: string) => {
-    setLoading(true);
     try {
+      setLoading(true);
+      console.log('Attempting sign up for:', email);
+      
       const { data, error } = await supabase.auth.signUp({
         email: email.toLowerCase().trim(),
         password,
@@ -165,7 +112,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           data: {
             username: username.trim(),
           },
-          emailRedirectTo: `${window.location.origin}/auth`,
         },
       });
       
@@ -185,6 +131,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const resetPassword = async (email: string) => {
     try {
+      console.log('Sending reset password email to:', email);
+      
       const { error } = await supabase.auth.resetPasswordForEmail(
         email.toLowerCase().trim(),
         {
@@ -197,7 +145,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         throw error;
       }
       
-      console.log('Reset password email sent');
+      console.log('Reset password email sent successfully');
     } catch (error) {
       console.error('Reset password failed:', error);
       throw error;
@@ -205,8 +153,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signOut = async () => {
-    setLoading(true);
     try {
+      setLoading(true);
+      console.log('Signing out...');
+      
       const { error } = await supabase.auth.signOut();
       
       if (error) {
@@ -215,15 +165,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
       
       console.log('Sign out successful');
-      
-      // Force clear state
-      setSession(null);
-      setUser(null);
     } catch (error) {
       console.error('Sign out failed:', error);
-      // Force clear state even on error
-      setSession(null);
-      setUser(null);
       throw error;
     } finally {
       setLoading(false);
