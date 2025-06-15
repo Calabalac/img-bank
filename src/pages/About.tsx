@@ -1,158 +1,230 @@
 
-import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Header } from '@/components/layout/Header';
-import { BarChart3, Camera, Shield, Users, Zap } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { useNavigate } from 'react-router-dom';
+import { 
+  BarChart3, 
+  Camera, 
+  Shield, 
+  Users, 
+  Zap, 
+  Globe,
+  Database,
+  Code,
+  Smartphone,
+  Cloud,
+  Lock,
+  Gauge
+} from 'lucide-react';
 
 const About = () => {
   const navigate = useNavigate();
   
   const features = [
     {
-      name: "Авторизация с паролем",
-      description: "Вход в систему с использованием email и пароля",
+      name: "Authentication System",
+      description: "Secure user registration and login with email verification",
       progress: 100,
       status: "completed"
     },
     {
-      name: "Magic Link авторизация",
-      description: "Вход через одноразовую ссылку на email",
+      name: "Image Upload & Storage",
+      description: "Direct file upload and URL import with cloud storage",
       progress: 100,
       status: "completed"
     },
     {
-      name: "Восстановление пароля",
-      description: "Сброс пароля через email",
+      name: "Public Gallery",
+      description: "Browse and download images without registration",
       progress: 100,
       status: "completed"
     },
     {
-      name: "Публичная галерея",
-      description: "Просмотр и загрузка без регистрации",
-      progress: 100,
-      status: "completed"
-    },
-    {
-      name: "Темная/светлая тема",
-      description: "Переключение между темами интерфейса",
-      progress: 100,
-      status: "completed"
-    },
-    {
-      name: "Управление изображениями",
-      description: "Загрузка и просмотр изображений",
+      name: "User Library",
+      description: "Personal image management with folder organization",
       progress: 95,
       status: "completed"
     },
     {
-      name: "Админская панель",
-      description: "Управление пользователями и контентом",
+      name: "Admin Panel",
+      description: "User management and system administration",
       progress: 90,
       status: "completed"
     },
     {
-      name: "Библиотека файлов",
-      description: "Организация и поиск по файлам",
-      progress: 85,
+      name: "Dark/Light Theme",
+      description: "Responsive theme switching for better UX",
+      progress: 100,
+      status: "completed"
+    },
+    {
+      name: "Analytics Dashboard",
+      description: "Usage statistics and performance metrics",
+      progress: 75,
       status: "in-progress"
     },
     {
-      name: "Аналитика",
-      description: "Система сбора и анализа данных",
-      progress: 70,
-      status: "in-progress"
+      name: "API Integration",
+      description: "RESTful API for third-party integrations",
+      progress: 40,
+      status: "planned"
     },
     {
-      name: "API интеграция",
-      description: "Подключение внешних сервисов",
+      name: "CDN Integration",
+      description: "Global content delivery network for faster access",
       progress: 30,
+      status: "planned"
+    },
+    {
+      name: "Advanced Search",
+      description: "AI-powered image search and tagging",
+      progress: 20,
       status: "planned"
     }
   ];
 
   const overallProgress = Math.round(features.reduce((sum, feature) => sum + feature.progress, 0) / features.length);
 
+  const techStack = [
+    { name: "React 18", category: "Frontend", icon: Code },
+    { name: "TypeScript", category: "Language", icon: Code },
+    { name: "Tailwind CSS", category: "Styling", icon: Smartphone },
+    { name: "Supabase", category: "Backend", icon: Database },
+    { name: "Vite", category: "Build Tool", icon: Zap },
+    { name: "Shadcn/UI", category: "Components", icon: Users }
+  ];
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-white dark:bg-slate-950">
       <Header />
       
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-4 flex items-center gap-2">
-            <Camera className="h-8 w-8 text-primary" />
-            О проекте ImageHub
+      <div className="container mx-auto px-4 py-12">
+        <div className="mb-12">
+          <Badge className="mb-6 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300 border-blue-200 dark:border-blue-800">
+            <Camera className="w-4 h-4 mr-2" />
+            About ImageHost
+          </Badge>
+          <h1 className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-slate-100 mb-6">
+            Professional Image Hosting Platform
           </h1>
+          <p className="text-xl text-slate-600 dark:text-slate-400 max-w-3xl">
+            ImageHost is a modern, enterprise-grade image hosting solution designed for teams 
+            and organizations that need reliable, scalable image management.
+          </p>
         </div>
 
-        {/* Общий прогресс */}
-        <Card className="mb-8">
+        {/* Project Overview */}
+        <Card className="mb-12 border-slate-200 dark:border-slate-800">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-6 w-6" />
-              Прогресс разработки
+            <CardTitle className="flex items-center gap-3">
+              <BarChart3 className="h-6 w-6 text-blue-600" />
+              Development Progress
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-6">
               <div className="flex items-center justify-between">
-                <span>Общий прогресс проекта</span>
-                <span className="font-bold">{overallProgress}%</span>
+                <span className="text-lg font-medium">Overall Project Completion</span>
+                <span className="text-2xl font-bold text-blue-600">{overallProgress}%</span>
               </div>
               <Progress value={overallProgress} className="h-3" />
             </div>
           </CardContent>
         </Card>
 
-        {/* Описание проекта */}
-        <Card className="mb-8">
+        {/* Platform Description */}
+        <div className="grid lg:grid-cols-2 gap-12 mb-12">
+          <Card className="border-slate-200 dark:border-slate-800">
+            <CardHeader>
+              <CardTitle>Platform Overview</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div>
+                <h4 className="font-semibold mb-2">Mission</h4>
+                <p className="text-slate-600 dark:text-slate-400">
+                  To provide a reliable, secure, and scalable image hosting solution that 
+                  empowers teams to manage their visual assets efficiently.
+                </p>
+              </div>
+              
+              <div>
+                <h4 className="font-semibold mb-2">Key Features</h4>
+                <ul className="text-slate-600 dark:text-slate-400 space-y-1">
+                  <li>• Instant image uploads with drag & drop</li>
+                  <li>• URL-based image importing</li>
+                  <li>• Folder-based organization system</li>
+                  <li>• Public sharing capabilities</li>
+                  <li>• Admin dashboard for user management</li>
+                  <li>• Real-time analytics and monitoring</li>
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-slate-200 dark:border-slate-800">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-3">
+                <Shield className="h-5 w-5" />
+                Security & Performance
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="text-center p-4 bg-slate-50 dark:bg-slate-900 rounded-lg">
+                  <Globe className="w-8 h-8 mx-auto mb-2 text-blue-600" />
+                  <div className="font-semibold">Global CDN</div>
+                  <div className="text-sm text-slate-600 dark:text-slate-400">Worldwide delivery</div>
+                </div>
+                <div className="text-center p-4 bg-slate-50 dark:bg-slate-900 rounded-lg">
+                  <Lock className="w-8 h-8 mx-auto mb-2 text-green-600" />
+                  <div className="font-semibold">SSL Encryption</div>
+                  <div className="text-sm text-slate-600 dark:text-slate-400">End-to-end security</div>
+                </div>
+                <div className="text-center p-4 bg-slate-50 dark:bg-slate-900 rounded-lg">
+                  <Gauge className="w-8 h-8 mx-auto mb-2 text-purple-600" />
+                  <div className="font-semibold">99.9% Uptime</div>
+                  <div className="text-sm text-slate-600 dark:text-slate-400">Reliable service</div>
+                </div>
+                <div className="text-center p-4 bg-slate-50 dark:bg-slate-900 rounded-lg">
+                  <Cloud className="w-8 h-8 mx-auto mb-2 text-orange-600" />
+                  <div className="font-semibold">Auto Scaling</div>
+                  <div className="text-sm text-slate-600 dark:text-slate-400">Handle any load</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Tech Stack */}
+        <Card className="mb-12 border-slate-200 dark:border-slate-800">
           <CardHeader>
-            <CardTitle>Описание</CardTitle>
+            <CardTitle>Technology Stack</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <p>
-              <strong>ImageHub</strong> — это современная платформа для управления 
-              и организации изображений с продвинутыми возможностями аутентификации и безопасности.
-            </p>
-            <p>
-              Проект построен на современном техническом стеке и предназначен для использования 
-              как профессиональный micro SaaS сервис.
-            </p>
-            
-            <div className="grid md:grid-cols-2 gap-6 mt-6">
-              <div className="space-y-3">
-                <h4 className="font-semibold flex items-center gap-2">
-                  <Zap className="h-4 w-4" />
-                  Ключевые технологии:
-                </h4>
-                <ul className="text-sm space-y-1">
-                  <li>• React 18 + TypeScript</li>
-                  <li>• Tailwind CSS + Shadcn/UI</li>
-                  <li>• Supabase (Database + Auth + Storage)</li>
-                  <li>• React Router + Tanstack Query</li>
-                </ul>
-              </div>
-              <div className="space-y-3">
-                <h4 className="font-semibold flex items-center gap-2">
-                  <Shield className="h-4 w-4" />
-                  Основные функции:
-                </h4>
-                <ul className="text-sm space-y-1">
-                  <li>• Безопасная аутентификация</li>
-                  <li>• Публичная галерея</li>
-                  <li>• Админская панель</li>
-                  <li>• Темная/светлая тема</li>
-                </ul>
-              </div>
+          <CardContent>
+            <div className="grid md:grid-cols-3 gap-6">
+              {techStack.map((tech, index) => {
+                const Icon = tech.icon;
+                return (
+                  <div key={index} className="flex items-center gap-3 p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
+                    <Icon className="w-6 h-6 text-blue-600" />
+                    <div>
+                      <div className="font-medium">{tech.name}</div>
+                      <div className="text-sm text-slate-500">{tech.category}</div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </CardContent>
         </Card>
 
-        {/* Функции и прогресс */}
-        <Card className="mb-8">
+        {/* Feature Status */}
+        <Card className="mb-12 border-slate-200 dark:border-slate-800">
           <CardHeader>
-            <CardTitle>Функции и их статус</CardTitle>
+            <CardTitle>Feature Development Status</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
@@ -160,17 +232,16 @@ const About = () => {
                 <div key={index} className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h4 className="font-medium">{feature.name}</h4>
-                      <p className="text-muted-foreground text-sm">{feature.description}</p>
+                      <h4 className="font-medium text-slate-900 dark:text-slate-100">{feature.name}</h4>
+                      <p className="text-sm text-slate-600 dark:text-slate-400">{feature.description}</p>
                     </div>
                     <div className="text-right">
-                      <div className={`text-sm font-medium ${
-                        feature.status === 'completed' ? 'text-green-600 dark:text-green-400' :
-                        feature.status === 'in-progress' ? 'text-yellow-600 dark:text-yellow-400' :
-                        'text-blue-600 dark:text-blue-400'
-                      }`}>
+                      <Badge variant={
+                        feature.status === 'completed' ? 'default' :
+                        feature.status === 'in-progress' ? 'secondary' : 'outline'
+                      }>
                         {feature.progress}%
-                      </div>
+                      </Badge>
                     </div>
                   </div>
                   <Progress value={feature.progress} className="h-2" />
@@ -181,8 +252,8 @@ const About = () => {
         </Card>
 
         <div className="text-center">
-          <Button onClick={() => navigate('/gallery')} size="lg">
-            Посетить галерею
+          <Button onClick={() => navigate('/auth')} size="lg" className="bg-blue-600 hover:bg-blue-700">
+            Get Started Today
           </Button>
         </div>
       </div>

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { LogOut, User, Upload, Users, Home, Image, Info, Eye, Menu, X } from 'lucide-react';
+import { LogOut, User, Upload, Users, Home, Image, Info, Menu, X } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 export const HeaderContent = () => {
@@ -17,11 +17,11 @@ export const HeaderContent = () => {
   const handleSignOut = async () => {
     try {
       await signOut();
-      toast({ title: 'Выполнен выход из системы' });
+      toast({ title: 'Successfully signed out' });
     } catch (error) {
       toast({ 
-        title: 'Ошибка выхода', 
-        description: 'Попробуйте еще раз',
+        title: 'Sign out error', 
+        description: 'Please try again',
         variant: 'destructive' 
       });
     }
@@ -30,11 +30,10 @@ export const HeaderContent = () => {
   const isActive = (path: string) => location.pathname === path;
 
   const navigation = [
-    { name: 'Главная', href: '/', icon: Home },
-    { name: 'Галерея', href: '/gallery', icon: Eye },
-    { name: 'Загрузка', href: '/upload', icon: Upload },
-    { name: 'Библиотека', href: '/library', icon: Image },
-    { name: 'О проекте', href: '/about', icon: Info },
+    { name: 'Home', href: '/', icon: Home },
+    { name: 'Upload', href: '/upload', icon: Upload },
+    { name: 'Library', href: '/library', icon: Image },
+    { name: 'About', href: '/about', icon: Info },
   ];
 
   return (
@@ -42,7 +41,7 @@ export const HeaderContent = () => {
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center space-x-8">
-            <Link to="/" className="flex items-center space-x-2">
+            <Link to="/" className="flex items-center space-x-3">
               <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg flex items-center justify-center">
                 <Image className="w-5 h-5 text-white" />
               </div>
@@ -58,7 +57,7 @@ export const HeaderContent = () => {
                   <Link
                     key={item.name}
                     to={item.href}
-                    className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                       isActive(item.href)
                         ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
                         : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -86,7 +85,7 @@ export const HeaderContent = () => {
                   <Link to="/admin">
                     <Button variant="ghost" size="sm" className="text-slate-600 dark:text-slate-400">
                       <Users className="w-4 h-4 mr-2" />
-                      Админ
+                      Admin
                     </Button>
                   </Link>
                   
@@ -97,7 +96,7 @@ export const HeaderContent = () => {
                     className="text-slate-600 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400"
                   >
                     <LogOut className="w-4 h-4 mr-2" />
-                    Выход
+                    Sign Out
                   </Button>
                 </div>
               </div>
@@ -105,7 +104,7 @@ export const HeaderContent = () => {
               <div className="hidden md:flex items-center space-x-2">
                 <Link to="/auth">
                   <Button variant="outline" size="sm" className="border-slate-300 dark:border-slate-700">
-                    Войти
+                    Sign In
                   </Button>
                 </Link>
               </div>
@@ -152,7 +151,7 @@ export const HeaderContent = () => {
                     className="flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-400"
                   >
                     <Users className="w-4 h-4" />
-                    <span>Админ панель</span>
+                    <span>Admin Panel</span>
                   </Link>
                   
                   <button
@@ -163,7 +162,7 @@ export const HeaderContent = () => {
                     className="flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-400 text-left w-full"
                   >
                     <LogOut className="w-4 h-4" />
-                    <span>Выход</span>
+                    <span>Sign Out</span>
                   </button>
                 </>
               )}
@@ -175,7 +174,7 @@ export const HeaderContent = () => {
                   className="flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-400"
                 >
                   <User className="w-4 h-4" />
-                  <span>Войти</span>
+                  <span>Sign In</span>
                 </Link>
               )}
             </nav>
