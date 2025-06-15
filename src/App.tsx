@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import Library from "./pages/Library";
 import ImageView from "./pages/ImageView";
 import Auth from "./pages/Auth";
+import About from "./pages/About";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 
@@ -24,6 +25,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/about" element={<About />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/library" element={<Library />} />
             <Route path="/:filename" element={<ImageView />} />

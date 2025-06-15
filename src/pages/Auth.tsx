@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Eye, EyeOff, Mail } from 'lucide-react';
+import { Eye, EyeOff, Mail, Link } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 
@@ -18,6 +18,7 @@ const Auth = () => {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [showMagicLink, setShowMagicLink] = useState(false);
   const [activeTab, setActiveTab] = useState('signin');
+  const [magicLinkSent, setMagicLinkSent] = useState(false);
   
   const { signIn, signUp, signInWithMagicLink, resetPassword, user, loading: authLoading } = useAuth();
   const { toast } = useToast();
@@ -77,7 +78,7 @@ const Auth = () => {
     if (!email) {
       toast({
         title: "Введите email",
-        description: "Email обязателен для отправки кода",
+        description: "Email обязателен для отправки ссылки",
         variant: "destructive",
       });
       return;
@@ -88,17 +89,17 @@ const Auth = () => {
       await signInWithMagicLink(email);
       
       toast({
-        title: "Код отправлен!",
-        description: "Проверьте почту и перейдите по ссылке",
+        title: "Ссылка отправлена!",
+        description: "Проверьте почту и перейдите по ссылке для входа в личный кабинет",
       });
       
-      setShowMagicLink(false);
+      setMagicLinkSent(true);
     } catch (error: any) {
       console.error('Magic link error:', error);
       
       toast({
         title: "Ошибка",
-        description: "Не удалось отправить код на почту",
+        description: "Не удалось отправить ссылку на почту",
         variant: "destructive",
       });
     } finally {
@@ -214,41 +215,80 @@ const Auth = () => {
         <Card className="w-full max-w-md backdrop-blur-md bg-white/5 border border-white/10">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl text-white flex items-center justify-center gap-2">
-              <Mail className="h-6 w-6" />
-              Вход по коду
+              <Link className="h-6 w-6" />
+              {magicLinkSent ? "Ссылка отправлена!" : "Вход по ссылке"}
             </CardTitle>
-            <p className="text-slate-300">Мы отправим код на вашу почту</p>
+            <p className="text-slate-300">
+              {magicLinkSent 
+                ? "Проверьте почту и перейдите по ссылке для входа в личный кабинет"
+                : "Мы отправим ссылку для входа на вашу почту"
+              }
+            </p>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleMagicLink} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="magic-email" className="text-white">Email</Label>
-                <Input
-                  id="magic-email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="bg-white/5 border-white/20 text-white"
-                  placeholder="your@email.com"
-                  required
-                />
+            {!magicLinkSent ? (
+              <form onSubmit={handleMagicLink} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="magic-email" className="text-white">Email</Label>
+                  <Input
+                    id="magic-email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="bg-white/5 border-white/20 text-white"
+                    placeholder="your@email.com"
+                    required
+                  />
+                </div>
+                <Button 
+                  type="submit" 
+                  className="w-full bg-purple-600 hover:bg-purple-700" 
+                  disabled={loading}
+                >
+                  {loading ? "Отправляем..." : "Отправить ссылку"}
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="ghost"
+                  className="w-full text-white hover:bg-white/10" 
+                  onClick={() => {
+                    setShowMagicLink(false);
+                    setMagicLinkSent(false);
+                  }}
+                >
+                  Назад к входу
+                </Button>
+              </form>
+            ) : (
+              <div className="space-y-4">
+                <div className="bg-green-500/20 border border-green-500/30 rounded-lg p-4">
+                  <p className="text-green-200 text-sm text-center">
+                    📧 Ссылка для входа отправлена на {email}
+                  </p>
+                </div>
+                <div className="text-center space-y-2">
+                  <p className="text-slate-400 text-sm">Не получили письмо?</p>
+                  <Button 
+                    onClick={() => setMagicLinkSent(false)}
+                    variant="outline"
+                    className="w-full border-white/20 text-white hover:bg-white/10 bg-transparent"
+                  >
+                    Отправить ещё раз
+                  </Button>
+                </div>
+                <Button 
+                  type="button" 
+                  variant="ghost"
+                  className="w-full text-white hover:bg-white/10" 
+                  onClick={() => {
+                    setShowMagicLink(false);
+                    setMagicLinkSent(false);
+                  }}
+                >
+                  Вернуться к другим способам входа
+                </Button>
               </div>
-              <Button 
-                type="submit" 
-                className="w-full bg-purple-600 hover:bg-purple-700" 
-                disabled={loading}
-              >
-                {loading ? "Отправляем..." : "Отправить код"}
-              </Button>
-              <Button 
-                type="button" 
-                variant="ghost"
-                className="w-full text-white hover:bg-white/10" 
-                onClick={() => setShowMagicLink(false)}
-              >
-                Назад к входу
-              </Button>
-            </form>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -362,15 +402,15 @@ const Auth = () => {
                   {loading ? "Входим..." : "Войти"}
                 </Button>
                 
-                <div className="flex flex-col gap-2">
+                <div className="space-y-2">
                   <Button 
                     type="button" 
                     variant="outline"
                     className="w-full border-white/20 text-white hover:bg-white/10 bg-transparent"
                     onClick={() => setShowMagicLink(true)}
                   >
-                    <Mail className="h-4 w-4 mr-2" />
-                    Войти по коду из почты
+                    <Link className="h-4 w-4 mr-2" />
+                    Войти через ссылку на почте
                   </Button>
                 </div>
                 
