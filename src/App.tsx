@@ -16,6 +16,7 @@ import AdminPanel from "./pages/AdminPanel";
 import Features from "./pages/Features";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
+import UploadPage from "./pages/Upload";
 
 const queryClient = new QueryClient();
 
@@ -36,6 +37,7 @@ const App = () => (
               <Route path="/admin" element={<AdminPanel />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/library" element={<Library />} />
+              <Route path="/upload" element={<UploadPage />} />
               <Route path="/:filename" element={<ImageView />} />
               <Route path="*" element={<NotFound />} />
             </Routes>

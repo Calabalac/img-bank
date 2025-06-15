@@ -38,6 +38,22 @@ export const uploadImageToStorage = async (file: File): Promise<string> => {
   return filename;
 };
 
+export const uploadFromUrl = async (imageUrl: string): Promise<{ filename: string; original_name: string; file_size: number; mime_type: string; }> => {
+  const { data, error } = await supabase.functions.invoke('upload-from-url', {
+    body: { imageUrl },
+  });
+
+  if (error) {
+    throw new Error(`Ошибка импорта по URL: ${error.message}`);
+  }
+  
+  if (data.error) {
+    throw new Error(`Ошибка импорта по URL: ${data.error}`);
+  }
+
+  return data;
+};
+
 export const saveImageMetadata = async (file: File, filename: string, accessType: 'public' | 'private' | 'shared' = 'public'): Promise<ImageData> => {
   const shortUrl = generateShortUrl(filename);
   const user = await supabase.auth.getUser();

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Header } from '@/components/layout/Header';
@@ -273,10 +272,10 @@ const AdminPanel = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-blue-900 dark:to-purple-900">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
         <Header />
         <div className="container mx-auto px-4 py-8 flex items-center justify-center">
-          <div className="backdrop-blur-lg bg-white/30 dark:bg-black/20 rounded-2xl p-8 shadow-2xl border border-white/20">
+          <div className="bg-white dark:bg-gray-900 rounded-lg p-8 shadow-md">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
           </div>
         </div>
@@ -285,32 +284,32 @@ const AdminPanel = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-blue-900 dark:to-purple-900">
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-950 text-gray-900 dark:text-gray-100">
       <Header />
       
       <div className="container mx-auto px-4 py-8">
-        <div className="mb-8 backdrop-blur-lg bg-white/20 dark:bg-black/20 rounded-2xl p-6 shadow-2xl border border-white/20">
-          <h1 className="text-3xl font-bold mb-2 text-gray-800 dark:text-white">Админ панель</h1>
-          <p className="text-gray-600 dark:text-gray-300">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold tracking-tight mb-2 text-gray-900 dark:text-white">Админ панель</h1>
+          <p className="text-gray-600 dark:text-gray-400">
             Управление пользователями, контентом и аналитикой
           </p>
         </div>
 
         <Tabs defaultValue="users" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 backdrop-blur-lg bg-white/30 dark:bg-black/20 border border-white/20">
-            <TabsTrigger value="users" className="flex items-center gap-2 data-[state=active]:bg-white/50 dark:data-[state=active]:bg-black/30">
+          <TabsList className="grid w-full grid-cols-4 bg-gray-200 dark:bg-gray-800 p-1 rounded-lg">
+            <TabsTrigger value="users" className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-900 data-[state=active]:shadow-sm rounded-md transition-all py-2">
               <Users className="h-4 w-4" />
               Пользователи
             </TabsTrigger>
-            <TabsTrigger value="images" className="flex items-center gap-2 data-[state=active]:bg-white/50 dark:data-[state=active]:bg-black/30">
+            <TabsTrigger value="images" className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-900 data-[state=active]:shadow-sm rounded-md transition-all py-2">
               <ImageIcon className="h-4 w-4" />
               Изображения
             </TabsTrigger>
-            <TabsTrigger value="analytics" className="flex items-center gap-2 data-[state=active]:bg-white/50 dark:data-[state=active]:bg-black/30">
+            <TabsTrigger value="analytics" className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-900 data-[state=active]:shadow-sm rounded-md transition-all py-2">
               <BarChart3 className="h-4 w-4" />
               Аналитика
             </TabsTrigger>
-            <TabsTrigger value="settings" className="flex items-center gap-2 data-[state=active]:bg-white/50 dark:data-[state=active]:bg-black/30">
+            <TabsTrigger value="settings" className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-900 data-[state=active]:shadow-sm rounded-md transition-all py-2">
               <Shield className="h-4 w-4" />
               Настройки
             </TabsTrigger>
@@ -324,23 +323,23 @@ const AdminPanel = () => {
                   placeholder="Поиск пользователей..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 backdrop-blur-lg bg-white/30 dark:bg-black/20 border border-white/20"
+                  className="pl-10 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-700"
                 />
               </div>
             </div>
 
             <div className="grid gap-4">
               {filteredUsers.map((user) => (
-                <Card key={user.id} className="backdrop-blur-lg bg-white/20 dark:bg-black/20 border border-white/20 shadow-xl">
+                <Card key={user.id} className="bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-800">
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
                           <h3 className="font-medium text-gray-800 dark:text-white">{user.email}</h3>
-                          <Badge variant={user.role === 'admin' ? 'default' : 'secondary'} className="backdrop-blur-sm">
+                          <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
                             {user.role}
                           </Badge>
-                          <Badge variant={user.status === 'active' ? 'default' : 'destructive'} className="backdrop-blur-sm">
+                          <Badge variant={user.status === 'active' ? 'default' : 'destructive'}>
                             {user.status}
                           </Badge>
                         </div>
@@ -356,10 +355,10 @@ const AdminPanel = () => {
                           value={user.role}
                           onValueChange={(value: UserRole) => updateUserRole(user.id, value)}
                         >
-                          <SelectTrigger className="w-32 backdrop-blur-lg bg-white/30 dark:bg-black/20 border border-white/20">
+                          <SelectTrigger className="w-32 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-700">
                             <SelectValue />
                           </SelectTrigger>
-                          <SelectContent className="backdrop-blur-lg bg-white/90 dark:bg-black/80 border border-white/20">
+                          <SelectContent className="bg-white dark:bg-gray-800">
                             <SelectItem value="user">User</SelectItem>
                             <SelectItem value="moderator">Moderator</SelectItem>
                             <SelectItem value="admin">Admin</SelectItem>
@@ -369,10 +368,10 @@ const AdminPanel = () => {
                           value={user.status}
                           onValueChange={(value: UserStatus) => updateUserStatus(user.id, value)}
                         >
-                          <SelectTrigger className="w-32 backdrop-blur-lg bg-white/30 dark:bg-black/20 border border-white/20">
+                          <SelectTrigger className="w-32 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-700">
                             <SelectValue />
                           </SelectTrigger>
-                          <SelectContent className="backdrop-blur-lg bg-white/90 dark:bg-black/80 border border-white/20">
+                          <SelectContent className="bg-white dark:bg-gray-800">
                             <SelectItem value="active">Active</SelectItem>
                             <SelectItem value="suspended">Suspended</SelectItem>
                             <SelectItem value="pending">Pending</SelectItem>
@@ -394,17 +393,17 @@ const AdminPanel = () => {
                   placeholder="Поиск изображений..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 backdrop-blur-lg bg-white/30 dark:bg-black/20 border border-white/20"
+                  className="pl-10 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-700"
                 />
               </div>
             </div>
 
             <div className="grid gap-4">
               {filteredImages.map((image) => (
-                <Card key={image.id} className="backdrop-blur-lg bg-white/20 dark:bg-black/20 border border-white/20 shadow-xl">
-                  <CardContent className="p-6">
+                <Card key={image.id} className="bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-800">
+                  <CardContent className="p-4">
                     <div className="flex items-center gap-4">
-                      <div className="w-16 h-16 bg-white/20 dark:bg-black/20 rounded-xl overflow-hidden flex-shrink-0 backdrop-blur-sm">
+                      <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden flex-shrink-0">
                         <img
                           src={`https://jafuyqfmcpilcvzzmmwq.supabase.co/storage/v1/object/public/images/public/${image.filename}`}
                           alt={image.original_name}
@@ -424,9 +423,8 @@ const AdminPanel = () => {
                       </div>
                       <Button
                         variant="destructive"
-                        size="sm"
+                        size="icon"
                         onClick={() => deleteImage(image.id, image.filename)}
-                        className="backdrop-blur-sm"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -439,45 +437,45 @@ const AdminPanel = () => {
 
           <TabsContent value="analytics" className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-              <Card className="backdrop-blur-lg bg-white/20 dark:bg-black/20 border border-white/20 shadow-xl">
+              <Card className="bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-800">
                 <CardHeader>
-                  <CardTitle className="text-sm text-gray-700 dark:text-gray-300">Всего пользователей</CardTitle>
+                  <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Всего пользователей</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-gray-800 dark:text-white">{users.length}</div>
+                  <div className="text-2xl font-bold text-gray-900 dark:text-white">{users.length}</div>
                 </CardContent>
               </Card>
-              <Card className="backdrop-blur-lg bg-white/20 dark:bg-black/20 border border-white/20 shadow-xl">
+              <Card className="bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-800">
                 <CardHeader>
-                  <CardTitle className="text-sm text-gray-700 dark:text-gray-300">Всего изображений</CardTitle>
+                  <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Всего изображений</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-gray-800 dark:text-white">{images.length}</div>
+                  <div className="text-2xl font-bold text-gray-900 dark:text-white">{images.length}</div>
                 </CardContent>
               </Card>
-              <Card className="backdrop-blur-lg bg-white/20 dark:bg-black/20 border border-white/20 shadow-xl">
+              <Card className="bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-800">
                 <CardHeader>
-                  <CardTitle className="text-sm text-gray-700 dark:text-gray-300">События</CardTitle>
+                  <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">События (записи)</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-gray-800 dark:text-white">{analytics.length}</div>
+                  <div className="text-2xl font-bold text-gray-900 dark:text-white">{analytics.length}</div>
                 </CardContent>
               </Card>
             </div>
 
-            <Card className="backdrop-blur-lg bg-white/20 dark:bg-black/20 border border-white/20 shadow-xl">
+            <Card className="bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-800">
               <CardHeader>
                 <CardTitle className="text-gray-800 dark:text-white">Последние события</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
                   {analytics.slice(0, 20).map((event) => (
-                    <div key={event.id} className="flex justify-between items-center py-2 border-b border-white/10 last:border-0">
+                    <div key={event.id} className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-800 last:border-0">
                       <div>
                         <span className="font-medium text-gray-800 dark:text-white">{event.event_type}</span>
                         {event.user_id && (
-                          <span className="text-sm text-gray-600 dark:text-gray-300 ml-2">
-                            ({event.user_id.slice(0, 8)}...)
+                          <span className="text-sm text-gray-600 dark:text-gray-400 ml-2">
+                            ({users.find(u => u.id === event.user_id)?.email || '...'})
                           </span>
                         )}
                       </div>
@@ -492,7 +490,7 @@ const AdminPanel = () => {
           </TabsContent>
 
           <TabsContent value="settings" className="space-y-6">
-            <Card className="backdrop-blur-lg bg-white/20 dark:bg-black/20 border border-white/20 shadow-xl">
+            <Card className="bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-800">
               <CardHeader>
                 <CardTitle className="text-gray-800 dark:text-white">Системные настройки</CardTitle>
               </CardHeader>
