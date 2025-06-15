@@ -1,9 +1,10 @@
-import { useState } from 'react';
+
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { ArrowLeft, Mail, Link, BarChart3 } from 'lucide-react';
+import { Header } from '@/components/layout/Header';
+import { BarChart3, Camera, Shield, Users, Zap } from 'lucide-react';
 
 const About = () => {
   const navigate = useNavigate();
@@ -28,81 +29,74 @@ const About = () => {
       status: "completed"
     },
     {
+      name: "Публичная галерея",
+      description: "Просмотр и загрузка без регистрации",
+      progress: 100,
+      status: "completed"
+    },
+    {
+      name: "Темная/светлая тема",
+      description: "Переключение между темами интерфейса",
+      progress: 100,
+      status: "completed"
+    },
+    {
       name: "Управление изображениями",
       description: "Загрузка и просмотр изображений",
-      progress: 85,
-      status: "in-progress"
+      progress: 95,
+      status: "completed"
+    },
+    {
+      name: "Админская панель",
+      description: "Управление пользователями и контентом",
+      progress: 90,
+      status: "completed"
     },
     {
       name: "Библиотека файлов",
       description: "Организация и поиск по файлам",
-      progress: 70,
+      progress: 85,
       status: "in-progress"
     },
     {
-      name: "Шифрование данных",
-      description: "Безопасное хранение пользовательских данных",
-      progress: 45,
-      status: "planned"
+      name: "Аналитика",
+      description: "Система сбора и анализа данных",
+      progress: 70,
+      status: "in-progress"
     },
     {
       name: "API интеграция",
       description: "Подключение внешних сервисов",
       progress: 30,
       status: "planned"
-    },
-    {
-      name: "Мобильное приложение",
-      description: "Адаптация под мобильные устройства",
-      progress: 15,
-      status: "planned"
     }
   ];
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed': return 'text-green-400';
-      case 'in-progress': return 'text-yellow-400';
-      case 'planned': return 'text-blue-400';
-      default: return 'text-gray-400';
-    }
-  };
-
-  const getProgressColor = (progress: number) => {
-    if (progress >= 90) return 'bg-green-500';
-    if (progress >= 50) return 'bg-yellow-500';
-    return 'bg-blue-500';
-  };
 
   const overallProgress = Math.round(features.reduce((sum, feature) => sum + feature.progress, 0) / features.length);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center gap-4 mb-8">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate('/')}
-            className="text-white hover:bg-white/10"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Назад
-          </Button>
-          <h1 className="text-3xl font-bold text-white">О проекте Image Hub</h1>
+    <div className="min-h-screen bg-background">
+      <Header />
+      
+      <div className="container mx-auto px-4 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold mb-4 flex items-center gap-2">
+            <Camera className="h-8 w-8 text-primary" />
+            О проекте ImageHub
+          </h1>
         </div>
 
-        {/* Общая информация */}
-        <Card className="mb-8 backdrop-blur-md bg-white/5 border border-white/10">
+        {/* Общий прогресс */}
+        <Card className="mb-8">
           <CardHeader>
-            <CardTitle className="text-white flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2">
               <BarChart3 className="h-6 w-6" />
               Прогресс разработки
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="flex items-center justify-between text-white">
+              <div className="flex items-center justify-between">
                 <span>Общий прогресс проекта</span>
                 <span className="font-bold">{overallProgress}%</span>
               </div>
@@ -112,36 +106,43 @@ const About = () => {
         </Card>
 
         {/* Описание проекта */}
-        <Card className="mb-8 backdrop-blur-md bg-white/5 border border-white/10">
+        <Card className="mb-8">
           <CardHeader>
-            <CardTitle className="text-white">Описание</CardTitle>
+            <CardTitle>Описание</CardTitle>
           </CardHeader>
-          <CardContent className="text-slate-300 space-y-4">
+          <CardContent className="space-y-4">
             <p>
-              <strong className="text-white">Image Hub</strong> — это современная платформа для управления 
+              <strong>ImageHub</strong> — это современная платформа для управления 
               и организации изображений с продвинутыми возможностями аутентификации и безопасности.
             </p>
             <p>
-              Проект построен на современном техническом стеке: React, TypeScript, Tailwind CSS, 
-              Supabase для backend и Shadcn/UI для компонентов интерфейса.
+              Проект построен на современном техническом стеке и предназначен для использования 
+              как профессиональный micro SaaS сервис.
             </p>
-            <div className="grid md:grid-cols-2 gap-4 mt-6">
-              <div className="space-y-2">
-                <h4 className="text-white font-semibold">Ключевые технологии:</h4>
+            
+            <div className="grid md:grid-cols-2 gap-6 mt-6">
+              <div className="space-y-3">
+                <h4 className="font-semibold flex items-center gap-2">
+                  <Zap className="h-4 w-4" />
+                  Ключевые технологии:
+                </h4>
                 <ul className="text-sm space-y-1">
                   <li>• React 18 + TypeScript</li>
                   <li>• Tailwind CSS + Shadcn/UI</li>
-                  <li>• Supabase (Database + Auth)</li>
+                  <li>• Supabase (Database + Auth + Storage)</li>
                   <li>• React Router + Tanstack Query</li>
                 </ul>
               </div>
-              <div className="space-y-2">
-                <h4 className="text-white font-semibold">Основные функции:</h4>
+              <div className="space-y-3">
+                <h4 className="font-semibold flex items-center gap-2">
+                  <Shield className="h-4 w-4" />
+                  Основные функции:
+                </h4>
                 <ul className="text-sm space-y-1">
                   <li>• Безопасная аутентификация</li>
-                  <li>• Управление изображениями</li>
-                  <li>• Организация файлов</li>
-                  <li>• Responsive дизайн</li>
+                  <li>• Публичная галерея</li>
+                  <li>• Админская панель</li>
+                  <li>• Темная/светлая тема</li>
                 </ul>
               </div>
             </div>
@@ -149,9 +150,9 @@ const About = () => {
         </Card>
 
         {/* Функции и прогресс */}
-        <Card className="backdrop-blur-md bg-white/5 border border-white/10">
+        <Card className="mb-8">
           <CardHeader>
-            <CardTitle className="text-white">Функции и их статус</CardTitle>
+            <CardTitle>Функции и их статус</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
@@ -159,31 +160,29 @@ const About = () => {
                 <div key={index} className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h4 className="text-white font-medium">{feature.name}</h4>
-                      <p className="text-slate-400 text-sm">{feature.description}</p>
+                      <h4 className="font-medium">{feature.name}</h4>
+                      <p className="text-muted-foreground text-sm">{feature.description}</p>
                     </div>
                     <div className="text-right">
-                      <div className={`text-sm font-medium ${getStatusColor(feature.status)}`}>
+                      <div className={`text-sm font-medium ${
+                        feature.status === 'completed' ? 'text-green-600 dark:text-green-400' :
+                        feature.status === 'in-progress' ? 'text-yellow-600 dark:text-yellow-400' :
+                        'text-blue-600 dark:text-blue-400'
+                      }`}>
                         {feature.progress}%
                       </div>
                     </div>
                   </div>
-                  <Progress 
-                    value={feature.progress} 
-                    className="h-2"
-                  />
+                  <Progress value={feature.progress} className="h-2" />
                 </div>
               ))}
             </div>
           </CardContent>
         </Card>
 
-        <div className="mt-8 text-center">
-          <Button
-            onClick={() => navigate('/auth')}
-            className="bg-blue-600 hover:bg-blue-700"
-          >
-            Начать использование
+        <div className="text-center">
+          <Button onClick={() => navigate('/gallery')} size="lg">
+            Посетить галерею
           </Button>
         </div>
       </div>

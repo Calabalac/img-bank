@@ -9,6 +9,36 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      analytics: {
+        Row: {
+          created_at: string | null
+          event_type: string
+          id: string
+          ip_address: unknown | null
+          metadata: Json | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          event_type: string
+          id?: string
+          ip_address?: unknown | null
+          metadata?: Json | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          event_type?: string
+          id?: string
+          ip_address?: unknown | null
+          metadata?: Json | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       folder_images: {
         Row: {
           created_at: string
@@ -107,64 +137,120 @@ export type Database = {
         }
         Relationships: []
       }
+      image_permissions: {
+        Row: {
+          created_at: string | null
+          granted_by: string | null
+          id: string
+          image_id: string | null
+          permission_type: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          granted_by?: string | null
+          id?: string
+          image_id?: string | null
+          permission_type?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          granted_by?: string | null
+          id?: string
+          image_id?: string | null
+          permission_type?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "image_permissions_image_id_fkey"
+            columns: ["image_id"]
+            isOneToOne: false
+            referencedRelation: "images"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       images: {
         Row: {
           access_type: Database["public"]["Enums"]["access_type"]
+          download_count: number | null
           file_path: string
           file_size: number | null
           filename: string
           id: string
+          is_featured: boolean | null
           mime_type: string | null
           original_name: string
           short_url: string
           uploaded_at: string
           user_id: string | null
+          view_count: number | null
         }
         Insert: {
           access_type?: Database["public"]["Enums"]["access_type"]
+          download_count?: number | null
           file_path: string
           file_size?: number | null
           filename: string
           id?: string
+          is_featured?: boolean | null
           mime_type?: string | null
           original_name: string
           short_url: string
           uploaded_at?: string
           user_id?: string | null
+          view_count?: number | null
         }
         Update: {
           access_type?: Database["public"]["Enums"]["access_type"]
+          download_count?: number | null
           file_path?: string
           file_size?: number | null
           filename?: string
           id?: string
+          is_featured?: boolean | null
           mime_type?: string | null
           original_name?: string
           short_url?: string
           uploaded_at?: string
           user_id?: string | null
+          view_count?: number | null
         }
         Relationships: []
       }
       profiles: {
         Row: {
+          avatar_url: string | null
           created_at: string
           email: string
           id: string
+          plan: string | null
+          role: Database["public"]["Enums"]["user_role"] | null
+          status: Database["public"]["Enums"]["user_status"] | null
           updated_at: string
           username: string | null
         }
         Insert: {
+          avatar_url?: string | null
           created_at?: string
           email: string
           id: string
+          plan?: string | null
+          role?: Database["public"]["Enums"]["user_role"] | null
+          status?: Database["public"]["Enums"]["user_status"] | null
           updated_at?: string
           username?: string | null
         }
         Update: {
+          avatar_url?: string | null
           created_at?: string
           email?: string
           id?: string
+          plan?: string | null
+          role?: Database["public"]["Enums"]["user_role"] | null
+          status?: Database["public"]["Enums"]["user_status"] | null
           updated_at?: string
           username?: string | null
         }
@@ -175,10 +261,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: { check_role: Database["public"]["Enums"]["user_role"] }
+        Returns: boolean
+      }
     }
     Enums: {
       access_type: "public" | "private" | "shared"
+      user_role: "admin" | "user" | "moderator"
+      user_status: "active" | "suspended" | "pending"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -295,6 +386,8 @@ export const Constants = {
   public: {
     Enums: {
       access_type: ["public", "private", "shared"],
+      user_role: ["admin", "user", "moderator"],
+      user_status: ["active", "suspended", "pending"],
     },
   },
 } as const
