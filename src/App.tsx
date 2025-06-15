@@ -13,6 +13,7 @@ import Auth from "./pages/Auth";
 import About from "./pages/About";
 import Gallery from "./pages/Gallery";
 import AdminPanel from "./pages/AdminPanel";
+import Features from "./pages/Features";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 
@@ -31,6 +32,7 @@ const App = () => (
               <Route path="/auth" element={<Auth />} />
               <Route path="/about" element={<About />} />
               <Route path="/gallery" element={<Gallery />} />
+              <Route path="/features" element={<Features />} />
               <Route path="/admin" element={<AdminPanel />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/library" element={<Library />} />
