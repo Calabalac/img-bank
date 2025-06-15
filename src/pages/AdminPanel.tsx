@@ -114,13 +114,35 @@ const AdminPanel = () => {
       const { data, error } = await supabase
         .from('images')
         .select(`
-          *,
+          id,
+          filename,
+          original_name,
+          user_id,
+          access_type,
+          uploaded_at,
+          file_size,
           profiles!images_user_id_fkey (email, username)
         `)
         .order('uploaded_at', { ascending: false });
 
       if (error) throw error;
-      setImages(data || []);
+      
+      // Transform the data to match our interface
+      const transformedData: ImageData[] = (data || []).map(item => ({
+        id: item.id,
+        filename: item.filename,
+        original_name: item.original_name,
+        user_id: item.user_id,
+        access_type: item.access_type,
+        uploaded_at: item.uploaded_at,
+        file_size: item.file_size,
+        profiles: item.profiles ? {
+          email: item.profiles.email,
+          username: item.profiles.username
+        } : null
+      }));
+      
+      setImages(transformedData);
     } catch (error) {
       console.error('Error fetching images:', error);
     }
