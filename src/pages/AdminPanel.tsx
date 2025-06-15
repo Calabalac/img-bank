@@ -12,13 +12,17 @@ import { Users, Image as ImageIcon, BarChart3, Shield, Trash2, Search } from 'lu
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
+import type { Database } from '@/integrations/supabase/types';
+
+type UserRole = Database['public']['Enums']['user_role'];
+type UserStatus = Database['public']['Enums']['user_status'];
 
 interface User {
   id: string;
   email: string;
-  username: string;
-  role: 'admin' | 'user' | 'moderator';
-  status: 'active' | 'suspended' | 'pending';
+  username: string | null;
+  role: UserRole;
+  status: UserStatus;
   created_at: string;
 }
 
@@ -29,8 +33,8 @@ interface ImageData {
   user_id: string;
   access_type: string;
   uploaded_at: string;
-  file_size: number;
-  profiles: { email: string; username: string; };
+  file_size: number | null;
+  profiles: { email: string; username: string | null; } | null;
 }
 
 interface AnalyticsData {
@@ -137,7 +141,7 @@ const AdminPanel = () => {
     }
   };
 
-  const updateUserRole = async (userId: string, newRole: string) => {
+  const updateUserRole = async (userId: string, newRole: UserRole) => {
     try {
       const { error } = await supabase
         .from('profiles')
@@ -162,7 +166,7 @@ const AdminPanel = () => {
     }
   };
 
-  const updateUserStatus = async (userId: string, newStatus: string) => {
+  const updateUserStatus = async (userId: string, newStatus: UserStatus) => {
     try {
       const { error } = await supabase
         .from('profiles')
@@ -220,7 +224,8 @@ const AdminPanel = () => {
     }
   };
 
-  const formatFileSize = (bytes: number) => {
+  const formatFileSize = (bytes: number | null) => {
+    if (!bytes) return 'Неизвестно';
     const sizes = ['Б', 'КБ', 'МБ', 'ГБ'];
     const i = Math.floor(Math.log(bytes) / Math.log(1024));
     return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
@@ -233,7 +238,7 @@ const AdminPanel = () => {
 
   const filteredImages = images.filter(image =>
     image.original_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    image.profiles?.email.toLowerCase().includes(searchTerm.toLowerCase())
+    (image.profiles?.email && image.profiles.email.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   if (loading) {
@@ -317,7 +322,7 @@ const AdminPanel = () => {
                       <div className="flex items-center gap-2">
                         <Select
                           value={user.role}
-                          onValueChange={(value) => updateUserRole(user.id, value)}
+                          onValueChange={(value: UserRole) => updateUserRole(user.id, value)}
                         >
                           <SelectTrigger className="w-32">
                             <SelectValue />
@@ -330,7 +335,7 @@ const AdminPanel = () => {
                         </Select>
                         <Select
                           value={user.status}
-                          onValueChange={(value) => updateUserStatus(user.id, value)}
+                          onValueChange={(value: UserStatus) => updateUserStatus(user.id, value)}
                         >
                           <SelectTrigger className="w-32">
                             <SelectValue />
