@@ -1,10 +1,9 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { ArrowLeft, Mail, Link, Progress as ProgressIcon } from 'lucide-react';
+import { ArrowLeft, Mail, Link, BarChart3 } from 'lucide-react';
 
 const About = () => {
   const navigate = useNavigate();
@@ -97,7 +96,7 @@ const About = () => {
         <Card className="mb-8 backdrop-blur-md bg-white/5 border border-white/10">
           <CardHeader>
             <CardTitle className="text-white flex items-center gap-2">
-              <ProgressIcon className="h-6 w-6" />
+              <BarChart3 className="h-6 w-6" />
               Прогресс разработки
             </CardTitle>
           </CardHeader>
