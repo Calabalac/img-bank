@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -6,6 +5,7 @@ import {
   ImageData,
   getAllImages, 
   deleteImage, 
+  saveImportedImageMetadata,
   generateShortUrl 
 } from "@/utils/imageUtils";
 import { LibraryHeader } from "@/components/library/LibraryHeader";
@@ -17,6 +17,12 @@ import { FolderManager } from "@/components/library/FolderManager";
 import { DragDropProvider } from "@/components/library/DragDropProvider";
 import { useAuth } from "@/hooks/useAuth";
 import { getFolderImages } from "@/utils/folderUtils";
+import { Link2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Progress } from "@/components/ui/progress";
+import { supabase } from "@/integrations/supabase/client";
 
 export type SortField = 'original_name' | 'uploaded_at' | 'file_size' | 'mime_type';
 export type SortDirection = 'asc' | 'desc';
@@ -34,6 +40,7 @@ const Library = () => {
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [foldersRefresh, setFoldersRefresh] = useState(0);
+  const [isUploadByUrlModalOpen, setUploadByUrlModalOpen] = useState(false);
   
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -240,18 +247,26 @@ const Library = () => {
 
             {/* Main Content */}
             <div className="lg:col-span-3">
-              <LibraryFilters
-                searchQuery={searchQuery}
-                setSearchQuery={setSearchQuery}
-                viewMode={viewMode}
-                setViewMode={setViewMode}
-                gridColumns={gridColumns}
-                setGridColumns={setGridColumns}
-                sortField={sortField}
-                setSortField={setSortField}
-                sortDirection={sortDirection}
-                setSortDirection={setSortDirection}
-              />
+              <div className="flex flex-col sm:flex-row gap-4 mb-4 items-start">
+                <div className="flex-grow">
+                  <LibraryFilters
+                    searchQuery={searchQuery}
+                    setSearchQuery={setSearchQuery}
+                    viewMode={viewMode}
+                    setViewMode={setViewMode}
+                    gridColumns={gridColumns}
+                    setGridColumns={setGridColumns}
+                    sortField={sortField}
+                    setSortField={setSortField}
+                    sortDirection={sortDirection}
+                    setSortDirection={setSortDirection}
+                  />
+                </div>
+                <Button variant="outline" className="shrink-0 bg-slate-800 border-slate-700 hover:bg-slate-700" onClick={() => setUploadByUrlModalOpen(true)}>
+                  <Link2 className="h-4 w-4 mr-2" />
+                  Загрузить по URL
+                </Button>
+              </div>
 
               {isLoading ? (
                 <div className="flex items-center justify-center py-20">
@@ -306,8 +321,134 @@ const Library = () => {
           </div>
         </div>
       </div>
+      <UploadByUrlModal
+        isOpen={isUploadByUrlModalOpen}
+        onOpenChange={setUploadByUrlModalOpen}
+        onUploadComplete={loadImages}
+      />
     </DragDropProvider>
   );
 };
+
+interface UploadByUrlModalProps {
+  isOpen: boolean;
+  onOpenChange: (isOpen: boolean) => void;
+  onUploadComplete: () => void;
+}
+
+const UploadByUrlModal = ({ isOpen, onOpenChange, onUploadComplete }: UploadByUrlModalProps) => {
+  const [links, setLinks] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [currentUpload, setCurrentUpload] = useState(0);
+  const [totalUploads, setTotalUploads] = useState(0);
+  const { toast } = useToast();
+
+  const handleUpload = async () => {
+    const urls = links.split('\n').map(link => link.trim()).filter(link => link.startsWith('http'));
+    if (urls.length === 0) {
+      toast({ title: 'Нет корректных ссылок для загрузки', description: "Убедитесь, что ссылки начинаются с http или https", variant: 'destructive' });
+      return;
+    }
+
+    setIsUploading(true);
+    setTotalUploads(urls.length);
+    setCurrentUpload(0);
+    setProgress(0);
+
+    let successfulUploads = 0;
+
+    for (let i = 0; i < urls.length; i++) {
+      const url = urls[i];
+      setCurrentUpload(i + 1);
+      try {
+        const { data, error: functionError } = await supabase.functions.invoke('upload-from-url', {
+          body: { imageUrl: url },
+        });
+
+        if (functionError) {
+          throw functionError;
+        }
+
+        await saveImportedImageMetadata(data, 'private');
+        successfulUploads++;
+      } catch (error) {
+        console.error(`Failed to upload from ${url}`, error);
+        toast({
+          title: `Ошибка при загрузке`,
+          description: (error as Error).message,
+          variant: 'destructive',
+        });
+      }
+      setProgress(((i + 1) / urls.length) * 100);
+    }
+
+    setIsUploading(false);
+    setLinks('');
+
+    if (successfulUploads > 0) {
+      onUploadComplete();
+    }
+    
+    if (successfulUploads === urls.length) {
+      onOpenChange(false);
+      toast({
+        title: 'Загрузка завершена',
+        description: `Успешно загружено ${successfulUploads} из ${urls.length} изображений.`,
+      });
+    } else {
+       toast({
+        title: 'Загрузка завершена с ошибками',
+        description: `Успешно загружено ${successfulUploads} из ${urls.length}. Проверьте консоль для деталей.`,
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleClose = () => {
+    if (isUploading) return;
+    onOpenChange(false);
+    setLinks('');
+    setProgress(0);
+  }
+
+  return (
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      <DialogContent className="bg-slate-900 border-slate-800 text-white">
+        <DialogHeader>
+          <DialogTitle>Загрузить изображения по URL</DialogTitle>
+          <DialogDescription className="text-slate-400">
+            Вставьте ссылки на изображения, каждую на новой строке.
+          </DialogDescription>
+        </DialogHeader>
+        <Textarea
+          placeholder="https://example.com/image1.png&#10;https://example.com/image2.jpg"
+          value={links}
+          onChange={(e) => setLinks(e.target.value)}
+          rows={10}
+          disabled={isUploading}
+          className="bg-slate-800 border-slate-700 focus:ring-slate-500"
+        />
+        {isUploading && (
+          <div className="space-y-2">
+            <Progress value={progress} className="[&>*]:bg-blue-500" />
+            <p className="text-sm text-center text-slate-400">
+              Загрузка {currentUpload} из {totalUploads}...
+            </p>
+          </div>
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={handleClose} disabled={isUploading} className="bg-slate-800 border-slate-700 hover:bg-slate-700">
+            Отмена
+          </Button>
+          <Button onClick={handleUpload} disabled={isUploading || !links.trim()} className="bg-blue-600 hover:bg-blue-700">
+            {isUploading ? 'Загрузка...' : 'Загрузить'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 
 export default Library;

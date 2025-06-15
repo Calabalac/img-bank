@@ -274,7 +274,7 @@ const Gallery = () => {
             </p>
             {!searchTerm && (
               <Button 
-                onClick={() => document.querySelector('input[type="file"]')?.click()}
+                onClick={() => (document.querySelector('input[type="file"]') as HTMLInputElement)?.click()}
                 className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-xl"
               >
                 <Upload className="h-4 w-4 mr-2" />

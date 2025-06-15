@@ -64,6 +64,40 @@ export const saveImageMetadata = async (file: File, filename: string, accessType
   return data;
 };
 
+export const saveImportedImageMetadata = async (
+  imageData: {
+    filename: string;
+    original_name: string;
+    file_size: number;
+    mime_type: string;
+  },
+  accessType: 'public' | 'private' | 'shared' = 'private'
+): Promise<ImageData> => {
+  const shortUrl = generateShortUrl(imageData.filename);
+  const user = await supabase.auth.getUser();
+  
+  const { data, error } = await supabase
+    .from('images')
+    .insert({
+      filename: imageData.filename,
+      original_name: imageData.original_name,
+      file_path: imageData.filename,
+      file_size: imageData.file_size,
+      mime_type: imageData.mime_type,
+      short_url: shortUrl,
+      user_id: user.data.user?.id || null,
+      access_type: accessType
+    })
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`Ошибка сохранения метаданных: ${error.message}`);
+  }
+
+  return data;
+};
+
 export const updateImageAccess = async (imageId: string, accessType: 'public' | 'private' | 'shared'): Promise<void> => {
   const { error } = await supabase
     .from('images')
