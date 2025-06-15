@@ -28,14 +28,14 @@ const UrlUploader = () => {
     setLoading(true);
     setResults([]);
 
-    const uploadPromises = urlList.map(async (url) => {
+    const uploadPromises = urlList.map(async (url): Promise<UploadResult> => {
       try {
         const imageData = await uploadFromUrl(url);
         await saveImportedImageMetadata(imageData);
-        return { url, status: 'success', message: `Импортировано: ${imageData.original_name}` };
+        return { url, status: 'success' as const, message: `Импортировано: ${imageData.original_name}` };
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Неизвестная ошибка';
-        return { url, status: 'error', message: `Ошибка: ${message}` };
+        return { url, status: 'error' as const, message: `Ошибка: ${message}` };
       }
     });
 
