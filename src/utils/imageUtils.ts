@@ -18,10 +18,22 @@ export const generateShortUrl = (filename: string) => {
 };
 
 export const generateUniqueFilename = (originalName: string) => {
+  // Clean the original name: remove unsafe characters and keep only the name and extension
+  const cleanName = originalName.replace(/[^a-zA-Z0-9.-]/g, '_');
   const timestamp = Date.now();
   const randomStr = Math.random().toString(36).substring(2, 8);
-  const extension = originalName.split('.').pop();
-  return `${timestamp}_${randomStr}.${extension}`;
+  
+  // Split name and extension
+  const lastDotIndex = cleanName.lastIndexOf('.');
+  if (lastDotIndex === -1) {
+    // No extension
+    return `${timestamp}_${randomStr}_${cleanName}`;
+  }
+  
+  const nameWithoutExt = cleanName.substring(0, lastDotIndex);
+  const extension = cleanName.substring(lastDotIndex);
+  
+  return `${timestamp}_${randomStr}_${nameWithoutExt}${extension}`;
 };
 
 export const uploadImageToStorage = async (file: File): Promise<string> => {
@@ -32,7 +44,7 @@ export const uploadImageToStorage = async (file: File): Promise<string> => {
     .upload(filename, file);
 
   if (error) {
-    throw new Error(`Ошибка загрузки файла: ${error.message}`);
+    throw new Error(`Upload error: ${error.message}`);
   }
 
   return filename;
@@ -44,11 +56,11 @@ export const uploadFromUrl = async (imageUrl: string): Promise<{ filename: strin
   });
 
   if (error) {
-    throw new Error(`Ошибка импорта по URL: ${error.message}`);
+    throw new Error(`URL import error: ${error.message}`);
   }
   
   if (data.error) {
-    throw new Error(`Ошибка импорта по URL: ${data.error}`);
+    throw new Error(`URL import error: ${data.error}`);
   }
 
   return data;
@@ -74,7 +86,7 @@ export const saveImageMetadata = async (file: File, filename: string, accessType
     .single();
 
   if (error) {
-    throw new Error(`Ошибка сохранения метаданных: ${error.message}`);
+    throw new Error(`Error saving metadata: ${error.message}`);
   }
 
   return data;
@@ -108,7 +120,7 @@ export const saveImportedImageMetadata = async (
     .single();
 
   if (error) {
-    throw new Error(`Ошибка сохранения метаданных: ${error.message}`);
+    throw new Error(`Error saving metadata: ${error.message}`);
   }
 
   return data;
@@ -121,7 +133,7 @@ export const updateImageAccess = async (imageId: string, accessType: 'public' | 
     .eq('id', imageId);
 
   if (error) {
-    throw new Error(`Ошибка обновления доступа: ${error.message}`);
+    throw new Error(`Error updating access: ${error.message}`);
   }
 };
 
@@ -133,7 +145,7 @@ export const getImageByShortUrl = async (shortUrl: string): Promise<ImageData | 
     .maybeSingle();
 
   if (error) {
-    console.error('Ошибка поиска изображения:', error);
+    console.error('Error searching for image:', error);
     return null;
   }
 
@@ -147,7 +159,7 @@ export const getAllImages = async (): Promise<ImageData[]> => {
     .order('uploaded_at', { ascending: false });
 
   if (error) {
-    throw new Error(`Ошибка загрузки изображений: ${error.message}`);
+    throw new Error(`Error loading images: ${error.message}`);
   }
 
   return data || [];
@@ -159,7 +171,7 @@ export const deleteImage = async (imageId: string, filename: string): Promise<vo
     .remove([filename]);
 
   if (storageError) {
-    console.error('Ошибка удаления файла из хранилища:', storageError);
+    console.error('Error deleting file from storage:', storageError);
   }
 
   const { error: dbError } = await supabase
@@ -168,7 +180,7 @@ export const deleteImage = async (imageId: string, filename: string): Promise<vo
     .eq('id', imageId);
 
   if (dbError) {
-    throw new Error(`Ошибка удаления записи: ${dbError.message}`);
+    throw new Error(`Error deleting record: ${dbError.message}`);
   }
 };
 

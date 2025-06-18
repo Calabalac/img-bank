@@ -1,4 +1,3 @@
-
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -6,6 +5,25 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
+
+const generateUniqueFilename = (originalName: string) => {
+  // Clean the original name: remove unsafe characters and keep only the name and extension
+  const cleanName = originalName.replace(/[^a-zA-Z0-9.-]/g, '_');
+  const timestamp = Date.now();
+  const randomStr = Math.random().toString(36).substring(2, 8);
+  
+  // Split name and extension
+  const lastDotIndex = cleanName.lastIndexOf('.');
+  if (lastDotIndex === -1) {
+    // No extension, add png as default
+    return `${timestamp}_${randomStr}_${cleanName}.png`;
+  }
+  
+  const nameWithoutExt = cleanName.substring(0, lastDotIndex);
+  const extension = cleanName.substring(lastDotIndex);
+  
+  return `${timestamp}_${randomStr}_${nameWithoutExt}${extension}`;
+};
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -31,8 +49,7 @@ serve(async (req) => {
     const mimeType = response.headers.get('content-type') || 'application/octet-stream'
     
     const originalName = imageUrl.split('/').pop()?.split('?')[0] || 'image.png'
-    const extension = originalName.split('.').pop() || 'png'
-    const filename = `${Date.now()}-${Math.random().toString(36).substring(2)}.${extension}`
+    const filename = generateUniqueFilename(originalName)
 
     const { error: uploadError } = await supabaseAdmin.storage
       .from('images')
