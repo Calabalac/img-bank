@@ -17,31 +17,29 @@ export const generateShortUrl = (filename: string) => {
   return `https://jafuyqfmcpilcvzzmmwq.supabase.co/functions/v1/image-redirect/${filename}`;
 };
 
-export const generateUniqueFilename = (originalName: string) => {
-  // Clean the original name: remove unsafe characters and keep only the name and extension
-  const cleanName = originalName.replace(/[^a-zA-Z0-9.-]/g, '_');
-  const timestamp = Date.now();
-  const randomStr = Math.random().toString(36).substring(2, 8);
-  
-  // Split name and extension
-  const lastDotIndex = cleanName.lastIndexOf('.');
-  if (lastDotIndex === -1) {
-    // No extension
-    return `${timestamp}_${randomStr}_${cleanName}`;
+export const checkFileExists = async (filename: string): Promise<boolean> => {
+  const { data, error } = await supabase
+    .from('images')
+    .select('id')
+    .eq('filename', filename)
+    .maybeSingle();
+
+  if (error) {
+    console.error('Error checking file existence:', error);
+    return false;
   }
-  
-  const nameWithoutExt = cleanName.substring(0, lastDotIndex);
-  const extension = cleanName.substring(lastDotIndex);
-  
-  return `${timestamp}_${randomStr}_${nameWithoutExt}${extension}`;
+
+  return !!data;
 };
 
-export const uploadImageToStorage = async (file: File): Promise<string> => {
-  const filename = generateUniqueFilename(file.name);
+export const uploadImageToStorage = async (file: File, overwrite: boolean = false): Promise<string> => {
+  const filename = file.name;
   
   const { data, error } = await supabase.storage
     .from('images')
-    .upload(filename, file);
+    .upload(filename, file, {
+      upsert: overwrite
+    });
 
   if (error) {
     throw new Error(`Upload error: ${error.message}`);
@@ -66,9 +64,17 @@ export const uploadFromUrl = async (imageUrl: string): Promise<{ filename: strin
   return data;
 };
 
-export const saveImageMetadata = async (file: File, filename: string, accessType: 'public' | 'private' | 'shared' = 'public'): Promise<ImageData> => {
+export const saveImageMetadata = async (file: File, filename: string, accessType: 'public' | 'private' | 'shared' = 'public', overwrite: boolean = false): Promise<ImageData> => {
   const shortUrl = generateShortUrl(filename);
   const user = await supabase.auth.getUser();
+  
+  if (overwrite) {
+    // Удаляем существующую запись если перезаписываем
+    await supabase
+      .from('images')
+      .delete()
+      .eq('filename', filename);
+  }
   
   const { data, error } = await supabase
     .from('images')
@@ -99,10 +105,19 @@ export const saveImportedImageMetadata = async (
     file_size: number;
     mime_type: string;
   },
-  accessType: 'public' | 'private' | 'shared' = 'private'
+  accessType: 'public' | 'private' | 'shared' = 'private',
+  overwrite: boolean = false
 ): Promise<ImageData> => {
   const shortUrl = generateShortUrl(imageData.filename);
   const user = await supabase.auth.getUser();
+  
+  if (overwrite) {
+    // Удаляем существующую запись если перезаписываем
+    await supabase
+      .from('images')
+      .delete()
+      .eq('filename', imageData.filename);
+  }
   
   const { data, error } = await supabase
     .from('images')

@@ -1,3 +1,4 @@
+
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -5,25 +6,6 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
-
-const generateUniqueFilename = (originalName: string) => {
-  // Clean the original name: remove unsafe characters and keep only the name and extension
-  const cleanName = originalName.replace(/[^a-zA-Z0-9.-]/g, '_');
-  const timestamp = Date.now();
-  const randomStr = Math.random().toString(36).substring(2, 8);
-  
-  // Split name and extension
-  const lastDotIndex = cleanName.lastIndexOf('.');
-  if (lastDotIndex === -1) {
-    // No extension, add png as default
-    return `${timestamp}_${randomStr}_${cleanName}.png`;
-  }
-  
-  const nameWithoutExt = cleanName.substring(0, lastDotIndex);
-  const extension = cleanName.substring(lastDotIndex);
-  
-  return `${timestamp}_${randomStr}_${nameWithoutExt}${extension}`;
-};
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -48,12 +30,18 @@ serve(async (req) => {
     const blob = await response.blob()
     const mimeType = response.headers.get('content-type') || 'application/octet-stream'
     
+    // Получаем оригинальное имя файла из URL
     const originalName = imageUrl.split('/').pop()?.split('?')[0] || 'image.png'
-    const filename = generateUniqueFilename(originalName)
+    
+    // Используем оригинальное имя файла без изменений
+    const filename = originalName
 
     const { error: uploadError } = await supabaseAdmin.storage
       .from('images')
-      .upload(filename, blob, { contentType: mimeType })
+      .upload(filename, blob, { 
+        contentType: mimeType,
+        upsert: false // По умолчанию не перезаписываем
+      })
 
     if (uploadError) {
       throw uploadError
